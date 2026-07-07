@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     FRONTEND_DOMAIN: str = "http://localhost:5000"
     OAUTH_GITHUB_CLIENT_ID: str
     OAUTH_GITHUB_CLIENT_SECRET: str
+    OAUTH_GOOGLE_CLIENT_ID: str
+    OAUTH_GOOGLE_CLIENT_SECRET: str
     SUPABASE_URL: str
     SUPABASE_SERVICE_KEY: str
     JWT_SECRET: str

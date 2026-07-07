@@ -3,7 +3,7 @@ from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from app.config import settings
-from app.db.users import get_or_create_user
+from app.db.users import get_or_create_user_github
 from app.dependencies.auth import create_user_session
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -56,7 +56,7 @@ async def github_callback(
     if email is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Primary verified email not found")
     
-    user = await get_or_create_user(github_id=github_id, username=userinfo.get("login"), avatar_url=userinfo.get("avatar_url"), email=email, display_name=userinfo.get("name"))
+    user = await get_or_create_user_github(github_id=github_id, username=userinfo.get("login"), avatar_url=userinfo.get("avatar_url"), email=email, display_name=userinfo.get("name"))
     if user is None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This email is already linked to another github account")
 

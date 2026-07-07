@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Sparkles } from 'lucide-react';
+import { Menu, X, Sparkles, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { AnimatedButton } from '@/components/ui/animated-button';
 import { cn } from '@/lib/utils';
@@ -14,15 +14,47 @@ const navLinks = [
   { href: '#workflow', label: 'How It Works' },
 ];
 
+type CurrentUser = {
+  name: string | null;
+  email: string;
+  picture: string | null;
+};
+
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState<CurrentUser | null>(null);
+  const [checkedAuth, setCheckedAuth] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    fetch('/api/users/me', { credentials: 'include' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) setUser({ name: data.display_name, email: data.email, picture: data.avatar_url });
+      })
+      .catch(() => {})
+      .finally(() => setCheckedAuth(true));
+  }, []);
+
+  const initials = (user?.name || user?.email || '?')
+    .trim()
+    .split(/\s+/)
+    .map((p) => p[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    setUser(null);
+    setIsMobileMenuOpen(false);
+  };
 
   return (
     <motion.header
@@ -67,12 +99,36 @@ export function Navbar() {
 
         {/* CTA */}
         <div className="hidden md:flex items-center gap-3">
-          <Link href="/login" className="px-4 py-2 text-sm text-white/60 hover:text-white transition-colors rounded-lg hover:bg-white/[0.05]">
-            Login
-          </Link>
-          <Link href="/signup">
-            <AnimatedButton size="sm">Get Started Free</AnimatedButton>
-          </Link>
+          {!checkedAuth ? null : user ? (
+            <>
+              <Link href="/dashboard" title={user.name ?? user.email}>
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold shadow-glow overflow-hidden">
+                  {user.picture ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={user.picture} alt={user.name ?? user.email} className="w-full h-full object-cover" />
+                  ) : (
+                    initials
+                  )}
+                </div>
+              </Link>
+              <button
+                onClick={handleLogout}
+                title="Log out"
+                className="p-2 text-white/50 hover:text-white transition-colors rounded-lg hover:bg-white/[0.05]"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="px-4 py-2 text-sm text-white/60 hover:text-white transition-colors rounded-lg hover:bg-white/[0.05]">
+                Login
+              </Link>
+              <Link href="/signup">
+                <AnimatedButton size="sm">Get Started Free</AnimatedButton>
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile hamburger */}
@@ -105,12 +161,41 @@ export function Navbar() {
                 </Link>
               ))}
               <div className="pt-3 border-t border-white/[0.08] flex flex-col gap-2">
-                <Link href="/login" className="px-4 py-2.5 text-white/70 hover:text-white text-sm text-center" onClick={() => setIsMobileMenuOpen(false)}>
-                  Login
-                </Link>
-                <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>
-                  <AnimatedButton size="sm" className="w-full">Get Started Free</AnimatedButton>
-                </Link>
+                {user ? (
+                  <>
+                    <Link
+                      href="/dashboard"
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-white/70 hover:text-white text-sm"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold overflow-hidden flex-shrink-0">
+                        {user.picture ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={user.picture} alt={user.name ?? user.email} className="w-full h-full object-cover" />
+                        ) : (
+                          initials
+                        )}
+                      </div>
+                      Dashboard
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-white/70 hover:text-white text-sm text-left"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Log out
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link href="/login" className="px-4 py-2.5 text-white/70 hover:text-white text-sm text-center" onClick={() => setIsMobileMenuOpen(false)}>
+                      Login
+                    </Link>
+                    <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>
+                      <AnimatedButton size="sm" className="w-full">Get Started Free</AnimatedButton>
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>
