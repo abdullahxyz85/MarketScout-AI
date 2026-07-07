@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     JWT_SECRET: str
     SESSION_SECRET: str
     ENVIRONMENT: Literal["development", "production"] = "development"
+    FireworksAPIKey: str
 
     class Config:
         env_file = ".env"

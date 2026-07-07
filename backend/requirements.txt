@@ -6,3 +6,4 @@ itsdangerous
 pyjwt
 supabase
 httpx
+openai
