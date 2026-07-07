@@ -1,6 +1,7 @@
 from authlib.integrations.base_client.errors import OAuthError
 from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from app.config import settings
 from app.db.users import get_or_create_user
 from app.dependencies.auth import create_user_session
@@ -24,7 +25,7 @@ oauth.register(
 
 @router.get("/github/login")
 async def github_login(request: Request):
-    redirect_uri = f"{settings.DOMAIN.rstrip('/')}/api/auth/github/callback"
+    redirect_uri = f"{settings.FRONTEND_DOMAIN.rstrip('/')}/callback/github"
     return await oauth.github.authorize_redirect(
         request,
         redirect_uri,
@@ -60,3 +61,10 @@ async def github_callback(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This email is already linked to another github account")
 
     return await create_user_session(user=user)
+
+
+@router.post("/logout")
+async def logout():
+    response = JSONResponse({"status": "ok"})
+    response.delete_cookie(key="access_token", path="/")
+    return response

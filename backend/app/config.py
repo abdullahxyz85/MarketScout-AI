@@ -8,6 +8,7 @@ from typing import Literal
 
 class Settings(BaseSettings):
     DOMAIN: str = "http://localhost:8000"
+    FRONTEND_DOMAIN: str = "http://localhost:5000"
     OAUTH_GITHUB_CLIENT_ID: str
     OAUTH_GITHUB_CLIENT_SECRET: str
     SUPABASE_URL: str
