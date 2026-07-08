@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Sparkles, ArrowRight, Zap, BarChart3, Users, TrendingUp,
@@ -12,7 +13,7 @@ import { GlassCard, GlassCardContent, GlassCardHeader } from '@/components/ui/gl
 import { AnimatedButton } from '@/components/ui/animated-button';
 import { StatusBadge } from '@/components/ui/animated-badge';
 import { AnimatedProgress } from '@/components/ui/animated-progress';
-import { saveLastResearch } from '@/lib/research-store';
+import { useResearch } from '@/lib/research-context';
 
 const industries = [
   'Healthcare',
@@ -42,81 +43,68 @@ const AGENTS = [
   { name: 'Report Generator',          icon: FileText,    color: 'from-indigo-500 to-blue-500' },
 ];
 
-type Stage = 'input' | 'running' | 'done';
+const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false });
 
-interface ResearchResult {
-  report?: {
-    executive_summary?: string;
-    market_score?: number;
-    opportunity_score?: number;
-    competition_level?: string;
-    recommendations?: string[];
-    key_metrics?: Record<string, string>;
-  };
-  innovation_score?: { innovation_score?: number; grade?: string; score_explanation?: string };
-  risks?: { overall_risk_level?: string };
-}
+const NODE_COLORS: Record<string, string> = {
+  idea: '#6366f1', competitor: '#ef4444', paper: '#10b981',
+  patent: '#f59e0b', funding: '#06b6d4', trend: '#a855f7',
+  opportunity: '#84cc16',
+};
 
 export default function ResearchPage() {
-  const [idea, setIdea] = useState('');
-  const [selectedIndustry, setSelectedIndustry] = useState('');
-  const [healthcareMode, setHealthcareMode] = useState(false);
-  const [stage, setStage] = useState<Stage>('input');
-  const [activeAgentIdx, setActiveAgentIdx] = useState(0);
-  const [activeAgentName, setActiveAgentName] = useState('');
-  const [progress, setProgress] = useState(0);
-  const [result, setResult] = useState<ResearchResult | null>(null);
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    idea, setIdea,
+    selectedIndustry, setSelectedIndustry,
+    healthcareMode, setHealthcareMode,
+    stage, activeAgentIdx, activeAgentName, progress, result, jobId, error,
+    startResearch, resetForm,
+  } = useResearch();
+  const [scenario, setScenario] = useState({
+    pricing_strategy: 'subscription',
+    target_market: '',
+    geography: '',
+    technology_choice: '',
+    team_size: '',
+    funding_amount: '',
+  });
+  const [scenarioResult, setScenarioResult] = useState<any>(null);
+  const [scenarioLoading, setScenarioLoading] = useState(false);
 
-  const startResearch = async () => {
-    if (!idea.trim()) return;
-    setStage('running');
-    setProgress(0);
-    setActiveAgentIdx(0);
-    setActiveAgentName('Research Agent');
-    setError(null);
+  // react-force-graph-2d sizes its canvas from the container's measured
+  // bounding box; inside a flex/grid layout that box can read 0 on the very
+  // first paint, leaving the graph invisible. Measuring explicitly and
+  // passing width/height as props avoids relying on its own auto-sizing.
+  const graphContainerRef = useRef<HTMLDivElement>(null);
+  const [graphSize, setGraphSize] = useState({ width: 0, height: 500 });
+
+  useEffect(() => {
+    const el = graphContainerRef.current;
+    if (!el) return;
+    const updateSize = () => setGraphSize({ width: el.clientWidth, height: 500 });
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [stage]);
+
+  const runScenario = async () => {
+    if (!jobId) return;
+    setScenarioLoading(true);
     try {
-      const res = await fetch('/api/agents/research/start', {
+      const res = await fetch(`/api/agents/research/${jobId}/scenario`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idea, industry: selectedIndustry, healthcare_mode: healthcareMode }),
+        body: JSON.stringify({ scenario }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error((err as any).detail ?? `HTTP ${res.status}`);
-      }
-      const { job_id } = await res.json();
-      setJobId(job_id);
-      const evtSource = new EventSource(`/api/agents/research/${job_id}/stream`);
-      evtSource.onmessage = (e: MessageEvent) => {
-        try {
-          const data = JSON.parse(e.data);
-          if (data.heartbeat) return;
-          if (typeof data.progress === 'number' && data.progress >= 0) setProgress(data.progress);
-          if (data.current_agent && data.current_agent !== 'Complete') {
-            setActiveAgentName(data.current_agent);
-            const idx = AGENTS.findIndex((a) => a.name === data.current_agent);
-            if (idx !== -1) setActiveAgentIdx(idx);
-          }
-          if (data.done) {
-            evtSource.close();
-            if (data.error) { setError(data.error); setStage('input'); }
-            else { const r: ResearchResult = data.result ?? {}; setResult(r); saveLastResearch(job_id, r); setStage('done'); }
-          }
-        } catch { /* ignore individual parse errors */ }
-      };
-      evtSource.onerror = () => { evtSource.close(); setError('Connection error. Please check the agent service and try again.'); setStage('input'); };
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-      setStage('input');
+      setScenarioResult(await res.json());
+    } catch {
+      setScenarioResult(null);
+    } finally {
+      setScenarioLoading(false);
     }
   };
 
-  const resetForm = () => {
-    setStage('input'); setIdea(''); setSelectedIndustry(''); setHealthcareMode(false);
-    setProgress(0); setActiveAgentIdx(0); setResult(null); setError(null); setJobId(null);
-  };
+  const handleStart = () => startResearch(AGENTS.map((a) => a.name));
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -210,7 +198,7 @@ export default function ResearchPage() {
                 </div>
                 <div className="mt-4 flex items-center justify-between">
                   <p className="text-sm text-white/40">Total estimated time: ~15 minutes</p>
-                  <AnimatedButton size="md" onClick={startResearch} disabled={!idea.trim()}>
+                  <AnimatedButton size="md" onClick={handleStart} disabled={!idea.trim()}>
                     Start Research <ArrowRight className="w-4 h-4" />
                   </AnimatedButton>
                 </div>
@@ -372,6 +360,99 @@ export default function ResearchPage() {
               <span className="text-sm text-white/60">Overall Risk Level: </span>
               <span className="text-sm font-semibold capitalize text-amber-400">{result?.risks?.overall_risk_level ?? 'medium'}</span>
             </div>
+
+            {/* Knowledge Graph */}
+            {result?.knowledge_graph?.nodes?.length ? (
+              <GlassCard>
+                <GlassCardHeader>
+                  <div className="flex items-center gap-2">
+                    <Compass className="w-5 h-5 text-violet-400" />
+                    <h3 className="text-base font-semibold text-white">Knowledge Graph</h3>
+                  </div>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  <div ref={graphContainerRef} style={{ height: 500, background: '#0f0f1a', borderRadius: 12, overflow: 'hidden' }}>
+                    {graphSize.width > 0 && (
+                      <ForceGraph2D
+                        graphData={result.knowledge_graph}
+                        width={graphSize.width}
+                        height={graphSize.height}
+                        nodeLabel="label"
+                        nodeColor={(n: any) => NODE_COLORS[n.type] ?? '#94a3b8'}
+                        nodeRelSize={6}
+                        linkColor={() => '#334155'}
+                        backgroundColor="#0f0f1a"
+                      />
+                    )}
+                  </div>
+                </GlassCardContent>
+              </GlassCard>
+            ) : null}
+
+            {/* What-if Scenario Simulation */}
+            <GlassCard>
+              <GlassCardHeader>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-indigo-400" />
+                  <h3 className="text-base font-semibold text-white">What-if Scenario Simulation</h3>
+                </div>
+              </GlassCardHeader>
+              <GlassCardContent className="space-y-4">
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs text-white/50 mb-1 block">Pricing Strategy</label>
+                    <select
+                      value={scenario.pricing_strategy}
+                      onChange={(e) => setScenario((s) => ({ ...s, pricing_strategy: e.target.value }))}
+                      className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-500/60"
+                    >
+                      <option value="subscription">Subscription</option>
+                      <option value="freemium">Freemium</option>
+                      <option value="one-time">One-time purchase</option>
+                      <option value="usage-based">Usage-based</option>
+                    </select>
+                  </div>
+                  {[
+                    { key: 'target_market', label: 'Target Market' },
+                    { key: 'geography', label: 'Geography' },
+                    { key: 'technology_choice', label: 'Technology Choice' },
+                    { key: 'team_size', label: 'Team Size' },
+                    { key: 'funding_amount', label: 'Funding Amount' },
+                  ].map((f) => (
+                    <div key={f.key}>
+                      <label className="text-xs text-white/50 mb-1 block">{f.label}</label>
+                      <input
+                        value={(scenario as any)[f.key]}
+                        onChange={(e) => setScenario((s) => ({ ...s, [f.key]: e.target.value }))}
+                        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-indigo-500/60"
+                        placeholder={f.label}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <AnimatedButton size="sm" onClick={runScenario} disabled={scenarioLoading}>
+                  {scenarioLoading ? 'Simulating...' : 'Run Scenario'}
+                </AnimatedButton>
+
+                {scenarioResult && (
+                  <div className="mt-4 p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+                    {scenarioResult.overall_recommendation && (
+                      <p className="text-sm text-white/80">{scenarioResult.overall_recommendation}</p>
+                    )}
+                    {Array.isArray(scenarioResult.key_action_items) && scenarioResult.key_action_items.length > 0 && (
+                      <ul className="space-y-1.5">
+                        {scenarioResult.key_action_items.map((item: string, i: number) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-white/60">
+                            <span className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-300 text-xs flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </GlassCardContent>
+            </GlassCard>
           </motion.div>
         )}
       </AnimatePresence>

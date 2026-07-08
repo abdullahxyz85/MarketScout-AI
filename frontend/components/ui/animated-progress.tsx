@@ -32,7 +32,7 @@ export function AnimatedProgress({
     <div className={cn('w-full', className)}>
       <div className="relative h-2 w-full overflow-hidden rounded-full bg-white/10">
         <motion.div
-          initial={{ width: 0 }}
+          initial={false}
           animate={{ width: `${percentage}%` }}
           transition={{ duration: 0.8, ease: 'easeOut' }}
           className={cn('h-full rounded-full', variants[variant], barClassName)}

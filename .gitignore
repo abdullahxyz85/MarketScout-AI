@@ -5,7 +5,7 @@ __pycache__/
 .venv/
 venv/
 .env
-
+agents/__pycache__/
 # Node
 node_modules/
 .next/

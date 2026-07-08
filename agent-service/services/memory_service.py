@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from config import settings
+
+logger = logging.getLogger("agent-service.memory")
 
 
 async def _get_client():
@@ -40,9 +43,10 @@ async def save_research_result(
             "innovation_score": (result.get("innovation_score") or {}).get("innovation_score"),
             "created_at": datetime.utcnow().isoformat(),
         }).execute()
+        logger.info("job %s: persisted to Supabase (user_id=%s)", job_id, user_id)
         return True
     except Exception as exc:
-        print(f"[memory_service] save_research_result failed: {exc}")
+        logger.warning("save_research_result failed for job %s: %s", job_id, exc)
         return False
 
 
@@ -77,7 +81,8 @@ async def get_past_research(industry: str, limit: int = 3) -> List[Dict[str, Any
             except Exception:
                 continue
         return items
-    except Exception:
+    except Exception as exc:
+        logger.warning("get_past_research failed for industry %s: %s", industry, exc)
         return []
 
 
@@ -98,7 +103,7 @@ async def get_research_result(job_id: str) -> Optional[Dict[str, Any]]:
             return json.loads(response.data[0]["result"])
         return None
     except Exception as exc:
-        print(f"[memory_service] get_research_result failed: {exc}")
+        logger.warning("get_research_result failed for job %s: %s", job_id, exc)
         return None
 
 
@@ -117,5 +122,6 @@ async def get_user_research_history(user_id: str, limit: int = 20) -> List[Dict[
             .execute()
         )
         return response.data or []
-    except Exception:
+    except Exception as exc:
+        logger.warning("get_user_research_history failed for user %s: %s", user_id, exc)
         return []

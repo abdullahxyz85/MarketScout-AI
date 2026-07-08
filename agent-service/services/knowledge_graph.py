@@ -115,7 +115,7 @@ def build_knowledge_graph(state: ResearchState) -> Dict[str, Any]:
         G.add_node(node_id, label=str(gap)[:40], type="opportunity", color="#22c55e", size=12)
         G.add_edge("idea", node_id, relation="has_opportunity")
 
-    graph_data = nx.node_link_data(G)
+    graph_data = nx.node_link_data(G, edges="links")
     return {
         "nodes": graph_data["nodes"],
         "links": graph_data["links"],

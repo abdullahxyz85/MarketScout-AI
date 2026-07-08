@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import uuid
 from datetime import datetime
 from typing import Any, Dict
@@ -12,7 +13,8 @@ from fastapi.responses import Response, StreamingResponse
 from orchestrator.pipeline import cleanup_queue, get_queue, register_queue, run_pipeline
 from schemas.models import JobResponse, JobStatus, ResearchRequest, ScenarioRequest
 from services import memory_service, report_generator
-from services.knowledge_graph import build_knowledge_graph
+
+logger = logging.getLogger("agent-service.router")
 
 def _sse_stream(queue: asyncio.Queue) -> StreamingResponse:
     """Wrap an asyncio.Queue into a StreamingResponse with text/event-stream content type."""
@@ -43,6 +45,7 @@ async def _pipeline_task(
     queue: asyncio.Queue,
 ) -> None:
     """Background task that runs the full multi-agent pipeline and publishes SSE events."""
+    logger.info("job %s: pipeline started (idea=%r, industry=%r)", job_id, request.idea, request.industry)
     try:
         final_state = await run_pipeline(
             job_id=job_id,
@@ -51,11 +54,14 @@ async def _pipeline_task(
             healthcare_mode=request.healthcare_mode,
         )
 
-        kg = build_knowledge_graph(final_state)
-        final_state["knowledge_graph"] = kg
-
         _jobs[job_id]["status"] = JobStatus.COMPLETED
         _jobs[job_id]["result"] = dict(final_state)
+
+        errors = final_state.get("errors") or []
+        if errors:
+            logger.warning("job %s: completed with %d agent-level error(s): %s", job_id, len(errors), errors)
+        else:
+            logger.info("job %s: completed successfully", job_id)
 
         # Exclude non-serializable internals from SSE payload
         result_payload = {k: v for k, v in final_state.items() if k != "job_id"}
@@ -80,6 +86,7 @@ async def _pipeline_task(
             )
 
     except Exception as exc:
+        logger.exception("job %s: pipeline failed", job_id)
         _jobs[job_id]["status"] = JobStatus.FAILED
         await queue.put({
             "progress": 0,
@@ -88,8 +95,16 @@ async def _pipeline_task(
             "error": str(exc),
         })
     finally:
-        await asyncio.sleep(300)
-        cleanup_queue(job_id)
+        # Delay cleanup on a separate task so a slow/late SSE reconnect can still
+        # find the queue, without blocking this background task (and therefore
+        # the request/reload lifecycle) for 5 extra minutes after completion.
+        asyncio.create_task(_delayed_cleanup(job_id))
+
+
+async def _delayed_cleanup(job_id: str, delay_seconds: int = 300) -> None:
+    await asyncio.sleep(delay_seconds)
+    cleanup_queue(job_id)
+    logger.debug("job %s: queue cleaned up", job_id)
 
 
 @router.post("/research/start", response_model=JobResponse, tags=["research"])
@@ -175,10 +190,16 @@ async def get_research_result(job_id: str):
 async def download_pdf_report(job_id: str):
     """Generate and return a PDF market intelligence report for a completed job."""
     job = _jobs.get(job_id)
-    if not job or job["status"] != JobStatus.COMPLETED or not job["result"]:
-        raise HTTPException(status_code=404, detail="Completed job not found")
+    if job and job["status"] == JobStatus.COMPLETED and job["result"]:
+        result = job["result"]
+    else:
+        # In-memory job registry is wiped on every service restart/reload;
+        # fall back to the persisted result so PDFs stay downloadable afterward.
+        result = await memory_service.get_research_result(job_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="Completed job not found")
 
-    pdf_bytes = report_generator.generate_pdf_report(job["result"])
+    pdf_bytes = report_generator.generate_pdf_report(result)
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

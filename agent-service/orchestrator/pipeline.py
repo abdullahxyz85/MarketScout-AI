@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Dict, Optional
+import logging
+import time
+from typing import Any, Awaitable, Dict, Optional
 
 from langgraph.graph import END, StateGraph
+
+logger = logging.getLogger("agent-service.pipeline")
 
 import agents.competitor_agent as competitor_agent
 import agents.funding_agent as funding_agent
@@ -20,6 +24,41 @@ import agents.swot_agent as swot_agent
 import agents.trend_agent as trend_agent
 import agents.validation_agent as validation_agent
 from schemas.state import ResearchState
+
+# Single source of truth for pipeline order — progress is derived from a step's
+# real position in this list (index / total), never a hand-picked percentage.
+AGENT_SEQUENCE = [
+    "Research Agent",
+    "Competitor Agent",
+    "Scientific Research Agent",
+    "Patent Intelligence Agent",
+    "Funding Agent",
+    "Trend Agent",
+    "Research Gap Agent",
+    "SWOT Agent",
+    "Opportunity Agent",
+    "Risk Agent",
+    "Innovation Scoring Agent",
+    "Validation Agent",
+    "Strategy Agent",
+    "Report Generator",
+]
+_TOTAL_STEPS = len(AGENT_SEQUENCE)
+
+
+def _progress_before(step_index: int) -> int:
+    """% complete right before running the step at step_index (0-based)."""
+    return round(step_index / _TOTAL_STEPS * 100)
+
+
+def _progress_after(step_index: int) -> int:
+    """% complete right after finishing the step at step_index (0-based)."""
+    return round((step_index + 1) / _TOTAL_STEPS * 100)
+
+
+def _next_agent_name(step_index: int) -> str:
+    return AGENT_SEQUENCE[step_index + 1] if step_index + 1 < _TOTAL_STEPS else "Complete"
+
 
 # Module-level registry mapping job_id → asyncio.Queue
 # Queues carry SSE progress events to the streaming endpoint.
@@ -50,114 +89,127 @@ async def _push(job_id: str, data: Dict[str, Any]) -> None:
         await q.put(data)
 
 
+async def _run_step(
+    job_id: str,
+    step_index: int,
+    errors: list,
+    error_label: str,
+    coro: Awaitable[Dict[str, Any]],
+) -> tuple[Dict[str, Any], int]:
+    """Run one pipeline step: push running event, await the agent, log outcome,
+    push completed event. Returns (result, progress_after) for the caller to merge into state."""
+    agent_name = AGENT_SEQUENCE[step_index]
+    await _push(job_id, {"progress": _progress_before(step_index), "current_agent": agent_name, "status": "running", "done": False})
+    logger.info("job %s: %s started", job_id, agent_name)
+    start = time.monotonic()
+    try:
+        result = await coro
+    except Exception as exc:
+        result = {}
+        errors.append(f"{error_label}: {exc}")
+        logger.exception("job %s: %s failed after %.1fs", job_id, agent_name, time.monotonic() - start)
+    else:
+        logger.info("job %s: %s completed in %.1fs", job_id, agent_name, time.monotonic() - start)
+    progress = _progress_after(step_index)
+    await _push(job_id, {"progress": progress, "current_agent": agent_name, "status": "completed", "done": False})
+    return result, progress
+
+
 # ─────────────────────────────────────────────
 # LangGraph Node Definitions
 # Each node: pushes running event → calls agent → updates state → pushes completed event
 # ─────────────────────────────────────────────
 
 async def _research_node(state: ResearchState) -> dict:
+    idx = 0
     job_id = state["job_id"]
-    await _push(job_id, {"progress": 3, "current_agent": "Research Agent", "status": "running", "done": False})
     errors = list(state.get("errors", []))
-    try:
-        result = await research_agent.run(state["idea"], state["industry"], state["healthcare_mode"])
-    except Exception as exc:
-        result = {}
-        errors.append(f"ResearchAgent: {exc}")
-    await _push(job_id, {"progress": 10, "current_agent": "Research Agent", "status": "completed", "done": False})
-    return {"research": result, "progress": 10, "current_agent": "Competitor Agent", "errors": errors}
+    result, progress = await _run_step(
+        job_id, idx, errors, "ResearchAgent",
+        research_agent.run(state["idea"], state["industry"], state["healthcare_mode"]),
+    )
+    return {"research": result, "progress": progress, "current_agent": _next_agent_name(idx), "errors": errors}
 
 
 async def _competitor_node(state: ResearchState) -> dict:
+    idx = 1
     job_id = state["job_id"]
-    await _push(job_id, {"progress": 11, "current_agent": "Competitor Agent", "status": "running", "done": False})
     errors = list(state.get("errors", []))
-    try:
-        result = await competitor_agent.run(state["idea"], state["industry"], state["healthcare_mode"])
-    except Exception as exc:
-        result = {}
-        errors.append(f"CompetitorAgent: {exc}")
-    await _push(job_id, {"progress": 20, "current_agent": "Competitor Agent", "status": "completed", "done": False})
-    return {"competitors": result, "progress": 20, "current_agent": "Scientific Research Agent", "errors": errors}
+    result, progress = await _run_step(
+        job_id, idx, errors, "CompetitorAgent",
+        competitor_agent.run(state["idea"], state["industry"], state["healthcare_mode"]),
+    )
+    return {"competitors": result, "progress": progress, "current_agent": _next_agent_name(idx), "errors": errors}
 
 
 async def _scientific_node(state: ResearchState) -> dict:
+    idx = 2
     job_id = state["job_id"]
-    await _push(job_id, {"progress": 21, "current_agent": "Scientific Research Agent", "status": "running", "done": False})
     errors = list(state.get("errors", []))
-    try:
-        result = await scientific_agent.run(state["idea"], state["industry"], state["healthcare_mode"])
-    except Exception as exc:
-        result = {}
-        errors.append(f"ScientificAgent: {exc}")
-    await _push(job_id, {"progress": 30, "current_agent": "Scientific Research Agent", "status": "completed", "done": False})
-    return {"scientific": result, "progress": 30, "current_agent": "Patent Intelligence Agent", "errors": errors}
+    result, progress = await _run_step(
+        job_id, idx, errors, "ScientificAgent",
+        scientific_agent.run(state["idea"], state["industry"], state["healthcare_mode"]),
+    )
+    return {"scientific": result, "progress": progress, "current_agent": _next_agent_name(idx), "errors": errors}
 
 
 async def _patent_node(state: ResearchState) -> dict:
+    idx = 3
     job_id = state["job_id"]
-    await _push(job_id, {"progress": 31, "current_agent": "Patent Intelligence Agent", "status": "running", "done": False})
     errors = list(state.get("errors", []))
-    try:
-        result = await patent_agent.run(state["idea"], state["industry"], state["healthcare_mode"])
-    except Exception as exc:
-        result = {}
-        errors.append(f"PatentAgent: {exc}")
-    await _push(job_id, {"progress": 38, "current_agent": "Patent Intelligence Agent", "status": "completed", "done": False})
-    return {"patents": result, "progress": 38, "current_agent": "Funding Agent", "errors": errors}
+    result, progress = await _run_step(
+        job_id, idx, errors, "PatentAgent",
+        patent_agent.run(state["idea"], state["industry"], state["healthcare_mode"]),
+    )
+    return {"patents": result, "progress": progress, "current_agent": _next_agent_name(idx), "errors": errors}
 
 
 async def _funding_node(state: ResearchState) -> dict:
+    idx = 4
     job_id = state["job_id"]
-    await _push(job_id, {"progress": 39, "current_agent": "Funding Agent", "status": "running", "done": False})
     errors = list(state.get("errors", []))
-    try:
-        result = await funding_agent.run(state["idea"], state["industry"], state["healthcare_mode"])
-    except Exception as exc:
-        result = {}
-        errors.append(f"FundingAgent: {exc}")
-    await _push(job_id, {"progress": 46, "current_agent": "Funding Agent", "status": "completed", "done": False})
-    return {"funding": result, "progress": 46, "current_agent": "Trend Agent", "errors": errors}
+    result, progress = await _run_step(
+        job_id, idx, errors, "FundingAgent",
+        funding_agent.run(state["idea"], state["industry"], state["healthcare_mode"]),
+    )
+    return {"funding": result, "progress": progress, "current_agent": _next_agent_name(idx), "errors": errors}
 
 
 async def _trend_node(state: ResearchState) -> dict:
+    idx = 5
     job_id = state["job_id"]
-    await _push(job_id, {"progress": 47, "current_agent": "Trend Agent", "status": "running", "done": False})
     errors = list(state.get("errors", []))
-    try:
-        result = await trend_agent.run(state["idea"], state["industry"], state["healthcare_mode"])
-    except Exception as exc:
-        result = {}
-        errors.append(f"TrendAgent: {exc}")
-    await _push(job_id, {"progress": 54, "current_agent": "Trend Agent", "status": "completed", "done": False})
-    return {"trends": result, "progress": 54, "current_agent": "Research Gap Agent", "errors": errors}
+    result, progress = await _run_step(
+        job_id, idx, errors, "TrendAgent",
+        trend_agent.run(state["idea"], state["industry"], state["healthcare_mode"]),
+    )
+    return {"trends": result, "progress": progress, "current_agent": _next_agent_name(idx), "errors": errors}
 
 
 async def _research_gap_node(state: ResearchState) -> dict:
+    idx = 6
     job_id = state["job_id"]
-    await _push(job_id, {"progress": 55, "current_agent": "Research Gap Agent", "status": "running", "done": False})
     errors = list(state.get("errors", []))
-    try:
-        result = await research_gap_agent.run(
+    result, progress = await _run_step(
+        job_id, idx, errors, "ResearchGapAgent",
+        research_gap_agent.run(
             idea=state["idea"],
             industry=state["industry"],
             healthcare_mode=state["healthcare_mode"],
             competitor_data=state.get("competitors"),
             scientific_data=state.get("scientific"),
-        )
-    except Exception as exc:
-        result = {}
-        errors.append(f"ResearchGapAgent: {exc}")
-    await _push(job_id, {"progress": 62, "current_agent": "Research Gap Agent", "status": "completed", "done": False})
-    return {"research_gaps": result, "progress": 62, "current_agent": "SWOT Agent", "errors": errors}
+        ),
+    )
+    return {"research_gaps": result, "progress": progress, "current_agent": _next_agent_name(idx), "errors": errors}
 
 
 async def _swot_node(state: ResearchState) -> dict:
+    idx = 7
     job_id = state["job_id"]
-    await _push(job_id, {"progress": 63, "current_agent": "SWOT Agent", "status": "running", "done": False})
     errors = list(state.get("errors", []))
-    try:
-        result = await swot_agent.run(
+    result, progress = await _run_step(
+        job_id, idx, errors, "SWOTAgent",
+        swot_agent.run(
             idea=state["idea"],
             industry=state["industry"],
             healthcare_mode=state["healthcare_mode"],
@@ -165,20 +217,18 @@ async def _swot_node(state: ResearchState) -> dict:
             competitor_data=state.get("competitors"),
             trend_data=state.get("trends"),
             gap_data=state.get("research_gaps"),
-        )
-    except Exception as exc:
-        result = {}
-        errors.append(f"SWOTAgent: {exc}")
-    await _push(job_id, {"progress": 68, "current_agent": "SWOT Agent", "status": "completed", "done": False})
-    return {"swot": result, "progress": 68, "current_agent": "Opportunity Agent", "errors": errors}
+        ),
+    )
+    return {"swot": result, "progress": progress, "current_agent": _next_agent_name(idx), "errors": errors}
 
 
 async def _opportunity_node(state: ResearchState) -> dict:
+    idx = 8
     job_id = state["job_id"]
-    await _push(job_id, {"progress": 69, "current_agent": "Opportunity Agent", "status": "running", "done": False})
     errors = list(state.get("errors", []))
-    try:
-        result = await opportunity_agent.run(
+    result, progress = await _run_step(
+        job_id, idx, errors, "OpportunityAgent",
+        opportunity_agent.run(
             idea=state["idea"],
             industry=state["industry"],
             healthcare_mode=state["healthcare_mode"],
@@ -186,53 +236,47 @@ async def _opportunity_node(state: ResearchState) -> dict:
             competitor_data=state.get("competitors"),
             gap_data=state.get("research_gaps"),
             swot_data=state.get("swot"),
-        )
-    except Exception as exc:
-        result = {}
-        errors.append(f"OpportunityAgent: {exc}")
-    await _push(job_id, {"progress": 74, "current_agent": "Opportunity Agent", "status": "completed", "done": False})
-    return {"opportunities": result, "progress": 74, "current_agent": "Risk Agent", "errors": errors}
+        ),
+    )
+    return {"opportunities": result, "progress": progress, "current_agent": _next_agent_name(idx), "errors": errors}
 
 
 async def _risk_node(state: ResearchState) -> dict:
+    idx = 9
     job_id = state["job_id"]
-    await _push(job_id, {"progress": 75, "current_agent": "Risk Agent", "status": "running", "done": False})
     errors = list(state.get("errors", []))
-    try:
-        result = await risk_agent.run(
+    result, progress = await _run_step(
+        job_id, idx, errors, "RiskAgent",
+        risk_agent.run(
             idea=state["idea"],
             industry=state["industry"],
             healthcare_mode=state["healthcare_mode"],
             competitor_data=state.get("competitors"),
             swot_data=state.get("swot"),
             patent_data=state.get("patents"),
-        )
-    except Exception as exc:
-        result = {}
-        errors.append(f"RiskAgent: {exc}")
-    await _push(job_id, {"progress": 80, "current_agent": "Risk Agent", "status": "completed", "done": False})
-    return {"risks": result, "progress": 80, "current_agent": "Innovation Scoring Agent", "errors": errors}
+        ),
+    )
+    return {"risks": result, "progress": progress, "current_agent": _next_agent_name(idx), "errors": errors}
 
 
 async def _innovation_scoring_node(state: ResearchState) -> dict:
+    idx = 10
     job_id = state["job_id"]
-    await _push(job_id, {"progress": 81, "current_agent": "Innovation Scoring Agent", "status": "running", "done": False})
     errors = list(state.get("errors", []))
-    try:
-        result = await innovation_scoring_agent.run(dict(state))
-    except Exception as exc:
-        result = {}
-        errors.append(f"InnovationScoringAgent: {exc}")
-    await _push(job_id, {"progress": 85, "current_agent": "Innovation Scoring Agent", "status": "completed", "done": False})
-    return {"innovation_score": result, "progress": 85, "current_agent": "Validation Agent", "errors": errors}
+    result, progress = await _run_step(
+        job_id, idx, errors, "InnovationScoringAgent",
+        innovation_scoring_agent.run(dict(state)),
+    )
+    return {"innovation_score": result, "progress": progress, "current_agent": _next_agent_name(idx), "errors": errors}
 
 
 async def _validation_node(state: ResearchState) -> dict:
+    idx = 11
     job_id = state["job_id"]
-    await _push(job_id, {"progress": 86, "current_agent": "Validation Agent", "status": "running", "done": False})
     errors = list(state.get("errors", []))
-    try:
-        result = await validation_agent.run(
+    result, progress = await _run_step(
+        job_id, idx, errors, "ValidationAgent",
+        validation_agent.run(
             idea=state["idea"],
             industry=state["industry"],
             healthcare_mode=state["healthcare_mode"],
@@ -240,20 +284,18 @@ async def _validation_node(state: ResearchState) -> dict:
             competitor_data=state.get("competitors"),
             opportunity_data=state.get("opportunities"),
             innovation_score_data=state.get("innovation_score"),
-        )
-    except Exception as exc:
-        result = {}
-        errors.append(f"ValidationAgent: {exc}")
-    await _push(job_id, {"progress": 90, "current_agent": "Validation Agent", "status": "completed", "done": False})
-    return {"validation": result, "progress": 90, "current_agent": "Strategy Agent", "errors": errors}
+        ),
+    )
+    return {"validation": result, "progress": progress, "current_agent": _next_agent_name(idx), "errors": errors}
 
 
 async def _strategy_node(state: ResearchState) -> dict:
+    idx = 12
     job_id = state["job_id"]
-    await _push(job_id, {"progress": 91, "current_agent": "Strategy Agent", "status": "running", "done": False})
     errors = list(state.get("errors", []))
-    try:
-        result = await strategy_agent.run(
+    result, progress = await _run_step(
+        job_id, idx, errors, "StrategyAgent",
+        strategy_agent.run(
             idea=state["idea"],
             industry=state["industry"],
             healthcare_mode=state["healthcare_mode"],
@@ -264,20 +306,18 @@ async def _strategy_node(state: ResearchState) -> dict:
             validation_data=state.get("validation"),
             gap_data=state.get("research_gaps"),
             trend_data=state.get("trends"),
-        )
-    except Exception as exc:
-        result = {}
-        errors.append(f"StrategyAgent: {exc}")
-    await _push(job_id, {"progress": 95, "current_agent": "Strategy Agent", "status": "completed", "done": False})
-    return {"strategy": result, "progress": 95, "current_agent": "Report Generator", "errors": errors}
+        ),
+    )
+    return {"strategy": result, "progress": progress, "current_agent": _next_agent_name(idx), "errors": errors}
 
 
 async def _report_node(state: ResearchState) -> dict:
+    idx = 13
     job_id = state["job_id"]
-    await _push(job_id, {"progress": 96, "current_agent": "Report Generator", "status": "running", "done": False})
     errors = list(state.get("errors", []))
-    try:
-        result = await report_agent.run(
+    result, progress = await _run_step(
+        job_id, idx, errors, "ReportAgent",
+        report_agent.run(
             idea=state["idea"],
             industry=state["industry"],
             healthcare_mode=state["healthcare_mode"],
@@ -290,12 +330,9 @@ async def _report_node(state: ResearchState) -> dict:
             strategy_data=state.get("strategy"),
             trend_data=state.get("trends"),
             validation_data=state.get("validation"),
-        )
-    except Exception as exc:
-        result = {}
-        errors.append(f"ReportAgent: {exc}")
-    await _push(job_id, {"progress": 99, "current_agent": "Report Generator", "status": "completed", "done": False})
-    return {"report": result, "progress": 99, "current_agent": "Complete", "errors": errors}
+        ),
+    )
+    return {"report": result, "progress": progress, "current_agent": _next_agent_name(idx), "errors": errors}
 
 
 # ─────────────────────────────────────────────
@@ -382,23 +419,20 @@ async def run_pipeline(
         "report": None,
     }
     pipeline = get_pipeline()
+    pipeline_start = time.monotonic()
     final_state = await pipeline.ainvoke(initial_state)
+    logger.info("job %s: all %d agents completed in %.1fs", job_id, _TOTAL_STEPS, time.monotonic() - pipeline_start)
 
     # Build the evidence knowledge graph from all agent outputs
     try:
         from services.knowledge_graph import build_knowledge_graph
         final_state["knowledge_graph"] = build_knowledge_graph(dict(final_state))
     except Exception as exc:
+        logger.exception("job %s: knowledge graph build failed", job_id)
         final_state["errors"] = list(final_state.get("errors", [])) + [f"KnowledgeGraph: {exc}"]
 
-    # Push the terminal done=True event so SSE listeners can cleanly close
-    await _push(job_id, {
-        "progress": 100,
-        "current_agent": "Complete",
-        "status": "completed",
-        "done": True,
-        "innovation_score": (final_state.get("innovation_score") or {}).get("innovation_score"),
-        "errors": final_state.get("errors", []),
-    })
-
+    # Note: the terminal done=True SSE event (carrying the full result payload)
+    # is pushed by the caller (router.py's _pipeline_task) once it has assembled
+    # the complete response — pushing a done=True event here would race it and
+    # cause the SSE stream to close before the real result is ever sent.
     return final_state

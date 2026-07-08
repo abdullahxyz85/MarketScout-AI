@@ -17,6 +17,7 @@ import { GlassCard, GlassCardContent, GlassCardHeader } from '@/components/ui/gl
 import { AnimatedProgress } from '@/components/ui/animated-progress';
 import { AnimatedBadge, StatusBadge } from '@/components/ui/animated-badge';
 import { AnimatedButton } from '@/components/ui/animated-button';
+import { loadLastResearch } from '@/lib/research-store';
 
 /* ── Data ── */
 const trendData = [
@@ -101,6 +102,7 @@ const axisStyle = { stroke: 'rgba(255,255,255,0.2)', fontSize: 11, fill: 'rgba(2
 
 export default function DashboardPage() {
   const [firstName, setFirstName] = useState('there');
+  const [liveData, setLiveData] = useState<any>(null);
 
   useEffect(() => {
     fetch('/api/users/me', { credentials: 'include' })
@@ -110,6 +112,35 @@ export default function DashboardPage() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const stored = loadLastResearch();
+    if (stored?.result) setLiveData(stored.result);
+  }, []);
+
+  const liveCompetitors: Array<{ name: string; marketShare: number; threat: string; trend: string; revenue: string }> =
+    liveData?.competitors?.competitors?.map((c: any) => ({
+      name: c.name,
+      marketShare: parseFloat(String(c.market_share).replace('%', '')) || 0,
+      threat: c.threat_level ?? 'low',
+      trend: 'stable',
+      revenue: c.revenue ?? '—',
+    })) ?? competitors;
+
+  const livePieData = liveData?.competitors?.competitors?.length
+    ? liveData.competitors.competitors.slice(0, 5).map((c: any, i: number) => ({
+        name: c.name,
+        value: parseFloat(String(c.market_share).replace('%', '')) || 0,
+        color: ['#6366f1', '#a855f7', '#06b6d4', '#10b981', '#f59e0b'][i] ?? '#94a3b8',
+      }))
+    : pieData;
+
+  const kpiCards = [
+    { icon: BarChart3, label: 'Market Score', value: liveData ? String(liveData?.innovation_score?.innovation_score ?? 0) : '94.2', change: '+12.4%', trend: 'up', color: 'from-emerald-500 to-teal-500', bg: 'rgba(16,185,129,0.08)' },
+    { icon: TrendingUp, label: 'Opportunity Score', value: liveData ? String(liveData?.opportunities?.opportunity_score ?? 0) : '87.8', change: '+8.2%', trend: 'up', color: 'from-indigo-500 to-purple-500', bg: 'rgba(99,102,241,0.08)' },
+    { icon: Building2, label: 'Competitors Found', value: liveData ? String(liveData?.competitors?.competitors?.length ?? 0) : '24', change: '+3 new', trend: 'up', color: 'from-purple-500 to-pink-500', bg: 'rgba(168,85,247,0.08)' },
+    { icon: Activity, label: 'Risk Score', value: liveData ? String(liveData?.risks?.risk_score ?? 0) : '$2.1B', change: liveData?.risks?.overall_risk_level ?? 'High', trend: 'up', color: 'from-cyan-500 to-blue-500', bg: 'rgba(6,182,212,0.08)' },
+  ];
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -129,12 +160,7 @@ export default function DashboardPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { icon: BarChart3, label: 'Market Score', value: '94.2', change: '+12.4%', trend: 'up', color: 'from-emerald-500 to-teal-500', bg: 'rgba(16,185,129,0.08)' },
-          { icon: TrendingUp, label: 'Opportunity Score', value: '87.8', change: '+8.2%', trend: 'up', color: 'from-indigo-500 to-purple-500', bg: 'rgba(99,102,241,0.08)' },
-          { icon: Building2, label: 'Competitors Found', value: '24', change: '+3 new', trend: 'up', color: 'from-purple-500 to-pink-500', bg: 'rgba(168,85,247,0.08)' },
-          { icon: Activity, label: 'Funding Activity', value: '$2.1B', change: 'High', trend: 'up', color: 'from-cyan-500 to-blue-500', bg: 'rgba(6,182,212,0.08)' },
-        ].map((m, i) => (
+        {kpiCards.map((m, i) => (
           <motion.div key={m.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
             <GlassCard className="h-full">
               <GlassCardContent>
@@ -275,7 +301,7 @@ export default function DashboardPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={pieData}
+                      data={livePieData}
                       cx="50%"
                       cy="50%"
                       innerRadius={55}
@@ -284,7 +310,7 @@ export default function DashboardPage() {
                       dataKey="value"
                       strokeWidth={0}
                     >
-                      {pieData.map((entry, i) => (
+                      {livePieData.map((entry: any, i: number) => (
                         <Cell key={i} fill={entry.color} opacity={0.85} />
                       ))}
                     </Pie>
@@ -296,7 +322,7 @@ export default function DashboardPage() {
                 </ResponsiveContainer>
               </div>
               <div className="space-y-2.5 flex-shrink-0">
-                {pieData.map((d) => (
+                {livePieData.map((d: any) => (
                   <div key={d.name} className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: d.color }} />
                     <div>
@@ -350,7 +376,7 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {competitors.map((c, i) => (
+                {liveCompetitors.map((c, i) => (
                   <motion.tr key={c.name} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.07 }}
                     className="border-b border-white/[0.04] hover:bg-white/[0.03] transition-colors">
                     <td className="py-2.5">
@@ -402,15 +428,15 @@ export default function DashboardPage() {
           <GlassCardContent>
             <div className="grid grid-cols-2 gap-2.5">
               {[
-                { label: 'Strengths', data: swotData.strengths, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
-                { label: 'Weaknesses', data: swotData.weaknesses, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' },
-                { label: 'Opportunities', data: swotData.opportunities, color: 'text-indigo-400', bg: 'bg-indigo-500/10 border-indigo-500/20' },
-                { label: 'Threats', data: swotData.threats, color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' },
+                { label: 'Strengths', data: liveData?.swot?.strengths ?? swotData.strengths, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+                { label: 'Weaknesses', data: liveData?.swot?.weaknesses ?? swotData.weaknesses, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' },
+                { label: 'Opportunities', data: liveData?.swot?.opportunities ?? swotData.opportunities, color: 'text-indigo-400', bg: 'bg-indigo-500/10 border-indigo-500/20' },
+                { label: 'Threats', data: liveData?.swot?.threats ?? swotData.threats, color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' },
               ].map((q) => (
                 <div key={q.label} className={`p-3 rounded-xl border ${q.bg}`}>
                   <div className={`text-xs font-semibold mb-2 ${q.color}`}>{q.label} ({q.data.length})</div>
                   <ul className="space-y-1">
-                    {q.data.slice(0, 2).map((t) => (
+                    {q.data.slice(0, 2).map((t: string) => (
                       <li key={t} className="text-xs text-white/50 flex items-start gap-1">
                         <ChevronRight className="w-3 h-3 mt-0.5 flex-shrink-0 text-white/25" />{t}
                       </li>

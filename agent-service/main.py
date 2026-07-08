@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -8,13 +9,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from router import router
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+
+logger = logging.getLogger("agent-service")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Warm up: pre-compile the LangGraph pipeline at startup
     from orchestrator.pipeline import get_pipeline
     get_pipeline()
+    logger.info("Agent service started — pipeline compiled and ready")
     yield
+    logger.info("Agent service shutting down")
 
 
 app = FastAPI(

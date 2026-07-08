@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AnimatedBackground } from '@/components/landing/animated-background';
+import { ResearchProvider, useResearch } from '@/lib/research-context';
 
 const sidebarItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
@@ -37,42 +38,22 @@ type CurrentUser = {
   picture: string | null;
 };
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [user, setUser] = useState<CurrentUser | null>(null);
-  const pathname = usePathname();
-  const router = useRouter();
-
-  useEffect(() => {
-    fetch('/api/users/me', { credentials: 'include' })
-      .then((res) => {
-        if (!res.ok) throw new Error('unauthenticated');
-        return res.json();
-      })
-      .then((data) =>
-        setUser({ id: data.id, email: data.email, name: data.display_name, picture: data.avatar_url })
-      )
-      .catch(() => router.replace('/login'));
-  }, [router]);
-
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-    router.replace('/login');
-  };
-
-  const initials = (user?.name || user?.email || '?')
-    .trim()
-    .split(/\s+/)
-    .map((p) => p[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
-  const isActive = (href: string) =>
-    href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href);
-
-  const SidebarContent = ({ mobile = false }: { mobile?: boolean }) => (
+function SidebarContent({
+  mobile = false,
+  collapsed,
+  isActive,
+  onToggleCollapsed,
+  onCloseMobile,
+  onLogout,
+}: {
+  mobile?: boolean;
+  collapsed: boolean;
+  isActive: (href: string) => boolean;
+  onToggleCollapsed: () => void;
+  onCloseMobile: () => void;
+  onLogout: () => void;
+}) {
+  return (
     <>
       <div className={cn(
         'flex items-center border-b border-white/10 transition-all duration-300',
@@ -101,14 +82,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
         {!mobile && (
           <button
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={onToggleCollapsed}
             className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors flex-shrink-0"
           >
             {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
         )}
         {mobile && (
-          <button onClick={() => setMobileOpen(false)} className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white ml-auto">
+          <button onClick={onCloseMobile} className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white ml-auto">
             <X className="w-4 h-4" />
           </button>
         )}
@@ -121,7 +102,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => setMobileOpen(false)}
+              onClick={onCloseMobile}
               className={cn(
                 'flex items-center gap-3 rounded-xl transition-all duration-200 group relative',
                 collapsed && !mobile ? 'px-2 py-3 justify-center' : 'px-3 py-2.5',
@@ -153,7 +134,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <div className="p-3 border-t border-white/10">
         <button
-          onClick={handleLogout}
+          onClick={onLogout}
           className={cn(
             'flex items-center gap-3 rounded-xl text-white/40 hover:text-white hover:bg-white/5 transition-all w-full',
             collapsed && !mobile ? 'px-2 py-3 justify-center' : 'px-3 py-2.5'
@@ -165,6 +146,52 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
     </>
   );
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <ResearchProvider>
+      <DashboardLayoutInner>{children}</DashboardLayoutInner>
+    </ResearchProvider>
+  );
+}
+
+function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [user, setUser] = useState<CurrentUser | null>(null);
+  const pathname = usePathname();
+  const router = useRouter();
+  const { stage, progress, activeAgentName } = useResearch();
+  const showResearchBadge = stage === 'running' && pathname !== '/dashboard/research';
+
+  useEffect(() => {
+    fetch('/api/users/me', { credentials: 'include' })
+      .then((res) => {
+        if (!res.ok) throw new Error('unauthenticated');
+        return res.json();
+      })
+      .then((data) =>
+        setUser({ id: data.id, email: data.email, name: data.display_name, picture: data.avatar_url })
+      )
+      .catch(() => router.replace('/login'));
+  }, [router]);
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    router.replace('/login');
+  };
+
+  const initials = (user?.name || user?.email || '?')
+    .trim()
+    .split(/\s+/)
+    .map((p) => p[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+  const isActive = (href: string) =>
+    href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href);
 
   return (
     <div className="min-h-screen bg-[#050508]">
@@ -176,7 +203,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           transition={{ type: 'spring', stiffness: 400, damping: 35 }}
           className="hidden lg:flex flex-col border-r border-white/[0.06] bg-black/40 backdrop-blur-2xl overflow-hidden flex-shrink-0"
         >
-          <SidebarContent />
+          <SidebarContent
+            collapsed={collapsed}
+            isActive={isActive}
+            onToggleCollapsed={() => setCollapsed((c) => !c)}
+            onCloseMobile={() => setMobileOpen(false)}
+            onLogout={handleLogout}
+          />
         </motion.aside>
 
         {/* Mobile Sidebar */}
@@ -197,7 +230,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 transition={{ type: 'spring', stiffness: 400, damping: 35 }}
                 className="lg:hidden fixed left-0 top-0 bottom-0 w-60 flex flex-col bg-black/95 backdrop-blur-2xl z-50 border-r border-white/10"
               >
-                <SidebarContent mobile />
+                <SidebarContent
+                  mobile
+                  collapsed={collapsed}
+                  isActive={isActive}
+                  onToggleCollapsed={() => setCollapsed((c) => !c)}
+                  onCloseMobile={() => setMobileOpen(false)}
+                  onLogout={handleLogout}
+                />
               </motion.div>
             </>
           )}
@@ -224,7 +264,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-3">
+              {showResearchBadge && (
+                <Link
+                  href="/dashboard/research"
+                  className="hidden sm:flex items-center gap-2 pl-2.5 pr-3 py-1.5 rounded-full bg-indigo-500/15 border border-indigo-500/30 hover:bg-indigo-500/25 transition-colors"
+                >
+                  <span className="relative flex w-2 h-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-400" />
+                  </span>
+                  <span className="text-xs text-indigo-200 font-medium">
+                    Research running{activeAgentName ? ` · ${activeAgentName}` : ''} · {progress}%
+                  </span>
+                </Link>
+              )}
+              <div className="flex items-center gap-1.5">
               <button className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors">
                 <Moon className="w-4 h-4" />
               </button>
@@ -239,6 +294,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 ) : (
                   initials
                 )}
+              </div>
               </div>
             </div>
           </header>

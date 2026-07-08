@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Building2, Target, TrendingUp, ShieldAlert } from "lucide-react";
 import {
@@ -7,8 +8,9 @@ import {
   GlassCardContent,
   GlassCardHeader,
 } from "@/components/ui/glass-card";
+import { loadLastResearch } from "@/lib/research-store";
 
-const competitors = [
+const MOCK_COMPETITORS = [
   {
     name: "TechCorp AI",
     segment: "Enterprise Analytics",
@@ -36,6 +38,25 @@ const competitors = [
 ];
 
 export default function CompetitorsPage() {
+  const [competitors, setCompetitors] = useState(MOCK_COMPETITORS);
+  const [live, setLive] = useState(false);
+
+  useEffect(() => {
+    const stored = loadLastResearch();
+    const real = (stored?.result?.competitors as any)?.competitors;
+    if (real?.length) {
+      setCompetitors(
+        real.map((c: any) => ({
+          name: c.name,
+          segment: c.description ?? "",
+          threat: (c.threat_level ?? "low").replace(/^\w/, (ch: string) => ch.toUpperCase()),
+          marketShare: c.market_share ?? "0%",
+        }))
+      );
+      setLive(true);
+    }
+  }, []);
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <div>
