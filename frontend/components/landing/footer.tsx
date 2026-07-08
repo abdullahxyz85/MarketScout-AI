@@ -2,10 +2,20 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+<<<<<<< HEAD
 import { Logo } from '@/components/ui/logo';
 
 const footerLinks = {
   Product: ['Features', 'Pricing', 'Dashboard', 'API'],
+=======
+import { Sparkles, Github, Linkedin, Twitter, Mail } from 'lucide-react';
+
+const footerLinks = {
+  Product: ['Features', 'Pricing', 'Dashboard', 'API'],
+  Resources: ['Documentation', 'Tutorials', 'Blog', 'Case Studies'],
+  Company: ['About', 'Careers', 'Contact', 'Press'],
+  Legal: ['Privacy', 'Terms', 'Security', 'Cookies'],
+>>>>>>> add-ai-agent-service
 };
 
 export function Footer() {
@@ -14,12 +24,50 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
           <div className="col-span-2">
+<<<<<<< HEAD
             <Link href="/" className="flex items-center mb-2">
               <Logo size={30} />
             </Link>
             <p className="text-sm text-white/50 ml-6 mb-6 max-w-xs">
               Autonomous AI agents transforming startup ideas into actionable market intelligence.
             </p>
+=======
+            <Link href="/" className="flex items-center gap-2 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-cyan-500 flex items-center justify-center shadow-glow">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xl font-bold text-white">
+                MarketScout <span className="text-gradient">AI</span>
+              </span>
+            </Link>
+            <p className="text-sm text-white/50 mb-6 max-w-xs">
+              Autonomous AI agents transforming startup ideas into actionable market intelligence.
+            </p>
+
+            <div className="flex gap-4">
+              <motion.a
+                href="#"
+                whileHover={{ scale: 1.1 }}
+                className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                <Twitter className="w-5 h-5" />
+              </motion.a>
+              <motion.a
+                href="#"
+                whileHover={{ scale: 1.1 }}
+                className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                <Github className="w-5 h-5" />
+              </motion.a>
+              <motion.a
+                href="#"
+                whileHover={{ scale: 1.1 }}
+                className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                <Linkedin className="w-5 h-5" />
+              </motion.a>
+            </div>
+>>>>>>> add-ai-agent-service
           </div>
 
           {Object.entries(footerLinks).map(([category, links]) => (
@@ -44,10 +92,17 @@ export function Footer() {
         <div className="mt-12 pt-8 border-t border-white/10">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-sm text-white/40">
+<<<<<<< HEAD
               2026 MarketScout AI. All rights reserved.
             </p>
 
             {/* <div className="flex items-center gap-4">
+=======
+              2024 MarketScout AI. All rights reserved.
+            </p>
+
+            <div className="flex items-center gap-4">
+>>>>>>> add-ai-agent-service
               <div className="flex items-center gap-2">
                 <input
                   type="email"
@@ -62,7 +117,11 @@ export function Footer() {
                   Subscribe
                 </motion.button>
               </div>
+<<<<<<< HEAD
             </div> */}
+=======
+            </div>
+>>>>>>> add-ai-agent-service
           </div>
         </div>
       </div>

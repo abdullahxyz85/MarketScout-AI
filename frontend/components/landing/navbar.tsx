@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+<<<<<<< HEAD
 import { Menu, X, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -22,12 +23,36 @@ const baseNavLinks = [
   { href: '#workflow', label: 'How It Works' },
 ];
 
+=======
+import { Menu, X, Sparkles, LogOut } from 'lucide-react';
+import Link from 'next/link';
+import { AnimatedButton } from '@/components/ui/animated-button';
+import { cn } from '@/lib/utils';
+
+const navLinks = [
+  { href: '#features', label: 'Features' },
+  { href: '#agents', label: 'Agents' },
+  { href: '/dashboard', label: 'Dashboard' },
+  { href: '#workflow', label: 'How It Works' },
+];
+
+type CurrentUser = {
+  name: string | null;
+  email: string;
+  picture: string | null;
+};
+
+>>>>>>> add-ai-agent-service
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<CurrentUser | null>(null);
+<<<<<<< HEAD
   const [authChecked, setAuthChecked] = useState(false);
   const router = useRouter();
+=======
+  const [checkedAuth, setCheckedAuth] = useState(false);
+>>>>>>> add-ai-agent-service
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -36,6 +61,7 @@ export function Navbar() {
   }, []);
 
   useEffect(() => {
+<<<<<<< HEAD
     let cancelled = false;
     fetch('/api/users/me', { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : null))
@@ -55,10 +81,29 @@ export function Navbar() {
     setIsMobileMenuOpen(false);
     router.push(authChecked && !user ? '/login' : '/dashboard');
   };
+=======
+    fetch('/api/users/me', { credentials: 'include' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) setUser({ name: data.display_name, email: data.email, picture: data.avatar_url });
+      })
+      .catch(() => {})
+      .finally(() => setCheckedAuth(true));
+  }, []);
+
+  const initials = (user?.name || user?.email || '?')
+    .trim()
+    .split(/\s+/)
+    .map((p) => p[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+>>>>>>> add-ai-agent-service
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
     setUser(null);
+<<<<<<< HEAD
     router.push('/');
   };
 
@@ -66,6 +111,11 @@ export function Navbar() {
     ? user.display_name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()
     : (user?.email?.[0] ?? '').toUpperCase();
 
+=======
+    setIsMobileMenuOpen(false);
+  };
+
+>>>>>>> add-ai-agent-service
   return (
     <motion.header
       initial={{ y: -100 }}
@@ -80,15 +130,34 @@ export function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
         {/* Logo */}
+<<<<<<< HEAD
         <Link href="/" className="flex items-center group">
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Logo size={28} className="text-white" />
           </motion.div>
+=======
+        <Link href="/" className="flex items-center gap-2.5 group">
+          <motion.div
+            className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-600 to-cyan-500 flex items-center justify-center"
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Sparkles className="w-4 h-4 text-white" />
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-600 to-cyan-500 opacity-40 blur-md -z-10" />
+          </motion.div>
+          <span className="text-lg font-bold text-white tracking-tight">
+            MarketScout <span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">AI</span>
+          </span>
+>>>>>>> add-ai-agent-service
         </Link>
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-0.5">
+<<<<<<< HEAD
           {baseNavLinks.map((link) => (
+=======
+          {navLinks.map((link) => (
+>>>>>>> add-ai-agent-service
             <Link
               key={link.href}
               href={link.href}
@@ -97,6 +166,7 @@ export function Navbar() {
               {link.label}
             </Link>
           ))}
+<<<<<<< HEAD
           <a
             href="/dashboard"
             onClick={handleDashboardClick}
@@ -104,10 +174,13 @@ export function Navbar() {
           >
             Dashboard
           </a>
+=======
+>>>>>>> add-ai-agent-service
         </nav>
 
         {/* CTA */}
         <div className="hidden md:flex items-center gap-3">
+<<<<<<< HEAD
           {user ? (
             <>
               {user.avatar_url ? (
@@ -127,6 +200,26 @@ export function Navbar() {
               >
                 <LogOut className="w-4 h-4" />
                 Log out
+=======
+          {!checkedAuth ? null : user ? (
+            <>
+              <Link href="/dashboard" title={user.name ?? user.email}>
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold shadow-glow overflow-hidden">
+                  {user.picture ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={user.picture} alt={user.name ?? user.email} className="w-full h-full object-cover" />
+                  ) : (
+                    initials
+                  )}
+                </div>
+              </Link>
+              <button
+                onClick={handleLogout}
+                title="Log out"
+                className="p-2 text-white/50 hover:text-white transition-colors rounded-lg hover:bg-white/[0.05]"
+              >
+                <LogOut className="w-4 h-4" />
+>>>>>>> add-ai-agent-service
               </button>
             </>
           ) : (
@@ -160,7 +253,11 @@ export function Navbar() {
             className="md:hidden bg-[#030306]/95 backdrop-blur-2xl border-t border-white/[0.06]"
           >
             <div className="px-4 py-4 space-y-1">
+<<<<<<< HEAD
               {baseNavLinks.map((link) => (
+=======
+              {navLinks.map((link) => (
+>>>>>>> add-ai-agent-service
                 <Link
                   key={link.href}
                   href={link.href}
@@ -170,6 +267,7 @@ export function Navbar() {
                   {link.label}
                 </Link>
               ))}
+<<<<<<< HEAD
               <a
                 href="/dashboard"
                 onClick={handleDashboardClick}
@@ -200,6 +298,29 @@ export function Navbar() {
                         handleLogout();
                       }}
                       className="px-4 py-2.5 text-white/70 hover:text-white text-sm text-center flex items-center justify-center gap-1.5"
+=======
+              <div className="pt-3 border-t border-white/[0.08] flex flex-col gap-2">
+                {user ? (
+                  <>
+                    <Link
+                      href="/dashboard"
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-white/70 hover:text-white text-sm"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold overflow-hidden flex-shrink-0">
+                        {user.picture ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={user.picture} alt={user.name ?? user.email} className="w-full h-full object-cover" />
+                        ) : (
+                          initials
+                        )}
+                      </div>
+                      Dashboard
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-white/70 hover:text-white text-sm text-left"
+>>>>>>> add-ai-agent-service
                     >
                       <LogOut className="w-4 h-4" />
                       Log out

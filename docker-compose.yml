@@ -11,16 +11,41 @@ services:
       - ./backend:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+<<<<<<< HEAD
+=======
+  agent-service:
+    build:
+      context: ./agent-service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    env_file:
+      - ./agent-service/.env
+    volumes:
+      - ./agent-service:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+    depends_on:
+      - backend
+
+>>>>>>> add-ai-agent-service
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
       - "5000:5000"
+<<<<<<< HEAD
     # env_file:
     #   - ./frontend/.env
+=======
+>>>>>>> add-ai-agent-service
     volumes:
       - ./frontend:/app
       - /app/node_modules
     depends_on:
+<<<<<<< HEAD
       - backend
+=======
+      - backend
+      - agent-service
+>>>>>>> add-ai-agent-service

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 'use client';
 
 import { useState } from 'react';
@@ -240,4 +241,10 @@ export default function SignupPage() {
       </div>
     </div>
   );
+=======
+import { redirect } from 'next/navigation';
+
+export default function SignupPage() {
+  redirect('/login');
+>>>>>>> add-ai-agent-service
 }

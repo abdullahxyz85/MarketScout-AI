@@ -32,4 +32,9 @@ yarn-error.log*
 .vercel
 
 # typescript
+<<<<<<< HEAD
 *.tsbuildinfo
+=======
+*.tsbuildinfo
+next-env.d.ts
+>>>>>>> add-ai-agent-service

@@ -1,5 +1,9 @@
 "use client";
 
+<<<<<<< HEAD
+=======
+import { useEffect, useState } from "react";
+>>>>>>> add-ai-agent-service
 import { motion } from "framer-motion";
 import { Building2, Target, TrendingUp, ShieldAlert } from "lucide-react";
 import {
@@ -7,8 +11,14 @@ import {
   GlassCardContent,
   GlassCardHeader,
 } from "@/components/ui/glass-card";
+<<<<<<< HEAD
 
 const competitors = [
+=======
+import { loadLastResearch } from "@/lib/research-store";
+
+const MOCK_COMPETITORS = [
+>>>>>>> add-ai-agent-service
   {
     name: "TechCorp AI",
     segment: "Enterprise Analytics",
@@ -36,6 +46,28 @@ const competitors = [
 ];
 
 export default function CompetitorsPage() {
+<<<<<<< HEAD
+=======
+  const [competitors, setCompetitors] = useState(MOCK_COMPETITORS);
+  const [live, setLive] = useState(false);
+
+  useEffect(() => {
+    const stored = loadLastResearch();
+    const real = (stored?.result?.competitors as any)?.competitors;
+    if (real?.length) {
+      setCompetitors(
+        real.map((c: any) => ({
+          name: c.name,
+          segment: c.description ?? "",
+          threat: (c.threat_level ?? "low").replace(/^\w/, (ch: string) => ch.toUpperCase()),
+          marketShare: c.market_share ?? "0%",
+        }))
+      );
+      setLive(true);
+    }
+  }, []);
+
+>>>>>>> add-ai-agent-service
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <div>

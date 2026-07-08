@@ -1,6 +1,10 @@
 'use client';
 
+<<<<<<< HEAD
 import { useState } from 'react';
+=======
+import { useEffect, useState } from 'react';
+>>>>>>> add-ai-agent-service
 import { motion } from 'framer-motion';
 import {
   FileText, Download, Eye, Share2, Star, BarChart3,
@@ -45,11 +49,67 @@ const tooltipStyle = {
   labelStyle: { color: '#94a3b8' },
 };
 
+<<<<<<< HEAD
 export default function ReportsPage() {
   const [search, setSearch] = useState('');
   const [starred, setStarred] = useState<number[]>([1, 3]);
 
   const filtered = reports.filter((r) => r.title.toLowerCase().includes(search.toLowerCase()));
+=======
+interface HistoryItem {
+  job_id: string;
+  idea?: string;
+  industry?: string;
+  created_at?: string;
+  innovation_score?: number;
+}
+
+const HISTORY_ICONS = [Heart, BarChart3, TrendingUp, Zap];
+const HISTORY_COLORS = [
+  'from-rose-500 to-pink-500',
+  'from-indigo-500 to-purple-500',
+  'from-emerald-500 to-teal-500',
+  'from-cyan-500 to-blue-500',
+];
+
+export default function ReportsPage() {
+  const [search, setSearch] = useState('');
+  const [starred, setStarred] = useState<number[]>([1, 3]);
+  const [history, setHistory] = useState<HistoryItem[] | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const userRes = await fetch('/api/users/me', { credentials: 'include' });
+        if (!userRes.ok) return;
+        const user = await userRes.json();
+        const userId = user?.id;
+        if (!userId) return;
+        const res = await fetch(`/api/agents/research/history/${userId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (Array.isArray(data) && data.length) setHistory(data);
+      } catch { /* keep mock data */ }
+    })();
+  }, []);
+
+  const liveReports = history?.map((h, i) => ({
+    id: i + 1,
+    jobId: h.job_id,
+    title: h.idea ?? 'Untitled Research',
+    description: h.industry ? `Industry: ${h.industry}` : '',
+    industry: h.industry ?? 'General',
+    score: h.innovation_score ?? 0,
+    date: h.created_at ? new Date(h.created_at).toLocaleString() : '',
+    pages: 0,
+    starred: false,
+    icon: HISTORY_ICONS[i % HISTORY_ICONS.length],
+    color: HISTORY_COLORS[i % HISTORY_COLORS.length],
+    scoreData: [h.innovation_score ?? 0, h.innovation_score ?? 0, h.innovation_score ?? 0, h.innovation_score ?? 0, h.innovation_score ?? 0, h.innovation_score ?? 0],
+  }));
+
+  const filtered = (liveReports ?? reports).filter((r) => r.title.toLowerCase().includes(search.toLowerCase()));
+>>>>>>> add-ai-agent-service
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -222,7 +282,17 @@ export default function ReportsPage() {
                         <Star className="w-3.5 h-3.5" fill={starred.includes(r.id) ? 'currentColor' : 'none'} />
                       </motion.button>
                     </div>
+<<<<<<< HEAD
                     <AnimatedButton size="sm"><Download className="w-3.5 h-3.5" />Download</AnimatedButton>
+=======
+                    {(r as any).jobId ? (
+                      <a href={`/api/agents/research/${(r as any).jobId}/report/pdf`} target="_blank" rel="noopener noreferrer">
+                        <AnimatedButton size="sm"><Download className="w-3.5 h-3.5" />Download</AnimatedButton>
+                      </a>
+                    ) : (
+                      <AnimatedButton size="sm"><Download className="w-3.5 h-3.5" />Download</AnimatedButton>
+                    )}
+>>>>>>> add-ai-agent-service
                   </div>
                 </GlassCardContent>
               </GlassCard>

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 __pycache__/
 *.pyc
 .env
@@ -5,3 +6,27 @@ __pycache__/
 venv/
 node_modules/
 .claude
+=======
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.env
+agents/__pycache__/
+# Node
+node_modules/
+.next/
+out/
+
+# IDE / tools
+.claude
+.DS_Store
+*.log
+
+# Generated test artefacts (do not commit)
+*.png
+*.pdf
+test_agents.ipynb
+>>>>>>> add-ai-agent-service
