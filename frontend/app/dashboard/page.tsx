@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
@@ -186,7 +186,30 @@ const axisStyle = {
   fill: "rgba(255,255,255,0.4)",
 };
 
+type CurrentUser = {
+  email: string;
+  display_name: string | null;
+};
+
 export default function DashboardPage() {
+  const [user, setUser] = useState<CurrentUser | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/users/me", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) setUser(data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const firstName =
+    user?.display_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "";
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -195,7 +218,7 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-white mb-0.5">
             Welcome back,{" "}
             <span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
-              John
+              {firstName}
             </span>
           </h1>
           <p className="text-white/45 text-sm">
