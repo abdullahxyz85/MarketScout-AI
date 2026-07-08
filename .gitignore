@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.env
+
+# Node
+node_modules/
+.next/
+out/
+
+# IDE / tools
+.claude
+.DS_Store
+*.log
+
+# Generated test artefacts (do not commit)
+*.png
+*.pdf
+test_agents.ipynb
