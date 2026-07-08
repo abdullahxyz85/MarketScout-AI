@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   User,
@@ -12,9 +12,6 @@ import {
   Moon,
   Save,
   Check,
-  Key,
-  Eye,
-  EyeOff,
   ChevronRight,
   Trash2,
 } from 'lucide-react';
@@ -30,9 +27,36 @@ const tabs = [
   { id: 'agents', label: 'AI Agents', icon: Zap },
 ];
 
+type CurrentUser = {
+  id: string;
+  email: string;
+  display_name: string | null;
+  avatar_url: string | null;
+};
+
 function ProfileTab() {
-  const [saved, setSaved] = useState(false);
-  const save = () => { setSaved(true); setTimeout(() => setSaved(false), 2000); };
+  const [user, setUser] = useState<CurrentUser | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/users/me', { credentials: 'include' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) setUser(data);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const initials = user?.display_name
+    ? user.display_name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()
+    : (user?.email?.[0] ?? '').toUpperCase();
+
   return (
     <div className="space-y-6">
       <GlassCard>
@@ -41,31 +65,41 @@ function ProfileTab() {
         </GlassCardHeader>
         <GlassCardContent className="space-y-4">
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-2xl shadow-glow">
-              JD
-            </div>
+            {user?.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt={user.display_name ?? user.email}
+                className="w-20 h-20 rounded-2xl object-cover shadow-glow"
+              />
+            ) : (
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-2xl shadow-glow">
+                {initials || '?'}
+              </div>
+            )}
             <div>
-              <div className="text-white font-semibold">John Doe</div>
-              <div className="text-sm text-white/50">john@example.com</div>
+              <div className="text-white font-semibold">
+                {loading ? 'Loading…' : user?.display_name ?? 'Unnamed User'}
+              </div>
+              <div className="text-sm text-white/50">{user?.email}</div>
               <AnimatedBadge variant="gradient" className="mt-2">Professional Plan</AnimatedBadge>
             </div>
           </div>
           {[
-            { label: 'Full Name', value: 'John Doe' },
-            { label: 'Email', value: 'john@example.com' },
-            { label: 'Company', value: 'My Startup Inc.' },
+            { label: 'Full Name', value: user?.display_name ?? '' },
+            { label: 'Email', value: user?.email ?? '' },
           ].map((f) => (
             <div key={f.label}>
               <label className="text-sm text-white/60 mb-1.5 block">{f.label}</label>
               <input
-                defaultValue={f.value}
-                className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-500/50 transition-colors"
+                value={f.value}
+                disabled
+                className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:border-indigo-500/50 transition-colors"
               />
             </div>
           ))}
-          <AnimatedButton size="sm" onClick={save}>
-            {saved ? <><Check className="w-4 h-4" /> Saved!</> : <><Save className="w-4 h-4" /> Save Changes</>}
-          </AnimatedButton>
+          <p className="text-xs text-white/40">
+            Your name and email come from your connected GitHub/Google account.
+          </p>
         </GlassCardContent>
       </GlassCard>
     </div>
@@ -117,32 +151,8 @@ function NotificationsTab() {
 }
 
 function SecurityTab() {
-  const [showPass, setShowPass] = useState(false);
   return (
     <div className="space-y-6">
-      <GlassCard>
-        <GlassCardHeader>
-          <h3 className="text-lg font-semibold text-white">Change Password</h3>
-        </GlassCardHeader>
-        <GlassCardContent className="space-y-4">
-          {['Current Password', 'New Password', 'Confirm Password'].map((f) => (
-            <div key={f}>
-              <label className="text-sm text-white/60 mb-1.5 block">{f}</label>
-              <div className="relative">
-                <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-                <input
-                  type={showPass ? 'text' : 'password'}
-                  className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-500/50"
-                />
-                <button onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white">
-                  {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-          ))}
-          <AnimatedButton size="sm"><Save className="w-4 h-4" /> Update Password</AnimatedButton>
-        </GlassCardContent>
-      </GlassCard>
       <GlassCard>
         <GlassCardHeader>
           <h3 className="text-lg font-semibold text-white">Two-Factor Authentication</h3>

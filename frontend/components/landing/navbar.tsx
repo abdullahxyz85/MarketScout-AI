@@ -2,29 +2,32 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Sparkles, LogOut } from 'lucide-react';
+import { Menu, X, LogOut } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { AnimatedButton } from '@/components/ui/animated-button';
+import { Logo } from '@/components/ui/logo';
 import { cn } from '@/lib/utils';
 
-const navLinks = [
+type CurrentUser = {
+  id: string;
+  email: string;
+  display_name: string | null;
+  avatar_url: string | null;
+};
+
+const baseNavLinks = [
   { href: '#features', label: 'Features' },
   { href: '#agents', label: 'Agents' },
-  { href: '/dashboard', label: 'Dashboard' },
   { href: '#workflow', label: 'How It Works' },
 ];
-
-type CurrentUser = {
-  name: string | null;
-  email: string;
-  picture: string | null;
-};
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<CurrentUser | null>(null);
-  const [checkedAuth, setCheckedAuth] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -33,28 +36,35 @@ export function Navbar() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     fetch('/api/users/me', { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data) setUser({ name: data.display_name, email: data.email, picture: data.avatar_url });
+        if (!cancelled) setUser(data);
       })
-      .catch(() => {})
-      .finally(() => setCheckedAuth(true));
+      .finally(() => {
+        if (!cancelled) setAuthChecked(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const initials = (user?.name || user?.email || '?')
-    .trim()
-    .split(/\s+/)
-    .map((p) => p[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+  const handleDashboardClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsMobileMenuOpen(false);
+    router.push(authChecked && !user ? '/login' : '/dashboard');
+  };
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
     setUser(null);
-    setIsMobileMenuOpen(false);
+    router.push('/');
   };
+
+  const initials = user?.display_name
+    ? user.display_name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()
+    : (user?.email?.[0] ?? '').toUpperCase();
 
   return (
     <motion.header
@@ -70,23 +80,15 @@ export function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <motion.div
-            className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-600 to-cyan-500 flex items-center justify-center"
-            whileHover={{ scale: 1.08 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Sparkles className="w-4 h-4 text-white" />
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-600 to-cyan-500 opacity-40 blur-md -z-10" />
+        <Link href="/" className="flex items-center group">
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Logo size={28} className="text-white" />
           </motion.div>
-          <span className="text-lg font-bold text-white tracking-tight">
-            MarketScout <span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">AI</span>
-          </span>
         </Link>
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-0.5">
-          {navLinks.map((link) => (
+          {baseNavLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -95,28 +97,36 @@ export function Navbar() {
               {link.label}
             </Link>
           ))}
+          <a
+            href="/dashboard"
+            onClick={handleDashboardClick}
+            className="px-4 py-2 text-sm text-white/55 hover:text-white transition-colors rounded-lg hover:bg-white/[0.05]"
+          >
+            Dashboard
+          </a>
         </nav>
 
         {/* CTA */}
         <div className="hidden md:flex items-center gap-3">
-          {!checkedAuth ? null : user ? (
+          {user ? (
             <>
-              <Link href="/dashboard" title={user.name ?? user.email}>
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold shadow-glow overflow-hidden">
-                  {user.picture ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={user.picture} alt={user.name ?? user.email} className="w-full h-full object-cover" />
-                  ) : (
-                    initials
-                  )}
+              {user.avatar_url ? (
+                <img
+                  src={user.avatar_url}
+                  alt={user.display_name ?? user.email}
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
+                  {initials || '?'}
                 </div>
-              </Link>
+              )}
               <button
                 onClick={handleLogout}
-                title="Log out"
-                className="p-2 text-white/50 hover:text-white transition-colors rounded-lg hover:bg-white/[0.05]"
+                className="px-4 py-2 text-sm text-white/60 hover:text-white transition-colors rounded-lg hover:bg-white/[0.05] flex items-center gap-1.5"
               >
                 <LogOut className="w-4 h-4" />
+                Log out
               </button>
             </>
           ) : (
@@ -150,7 +160,7 @@ export function Navbar() {
             className="md:hidden bg-[#030306]/95 backdrop-blur-2xl border-t border-white/[0.06]"
           >
             <div className="px-4 py-4 space-y-1">
-              {navLinks.map((link) => (
+              {baseNavLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
@@ -160,27 +170,36 @@ export function Navbar() {
                   {link.label}
                 </Link>
               ))}
+              <a
+                href="/dashboard"
+                onClick={handleDashboardClick}
+                className="block px-4 py-2.5 text-white/70 hover:text-white hover:bg-white/[0.05] rounded-xl transition-colors text-sm"
+              >
+                Dashboard
+              </a>
               <div className="pt-3 border-t border-white/[0.08] flex flex-col gap-2">
                 {user ? (
                   <>
-                    <Link
-                      href="/dashboard"
-                      className="flex items-center gap-2.5 px-4 py-2.5 text-white/70 hover:text-white text-sm"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold overflow-hidden flex-shrink-0">
-                        {user.picture ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={user.picture} alt={user.name ?? user.email} className="w-full h-full object-cover" />
-                        ) : (
-                          initials
-                        )}
-                      </div>
-                      Dashboard
-                    </Link>
+                    <div className="flex items-center gap-2 px-4 py-2">
+                      {user.avatar_url ? (
+                        <img
+                          src={user.avatar_url}
+                          alt={user.display_name ?? user.email}
+                          className="w-7 h-7 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
+                          {initials || '?'}
+                        </div>
+                      )}
+                      <span className="text-sm text-white/70">{user.display_name ?? user.email}</span>
+                    </div>
                     <button
-                      onClick={handleLogout}
-                      className="flex items-center gap-2.5 px-4 py-2.5 text-white/70 hover:text-white text-sm text-left"
+                      onClick={() => {
+                        setIsMobileMenuOpen(false);
+                        handleLogout();
+                      }}
+                      className="px-4 py-2.5 text-white/70 hover:text-white text-sm text-center flex items-center justify-center gap-1.5"
                     >
                       <LogOut className="w-4 h-4" />
                       Log out
