@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
   BarChart3,
@@ -17,6 +17,8 @@ import {
   ShieldAlert,
   Lightbulb,
   ChevronRight,
+  ChevronDown,
+  Check,
   ArrowUpRight,
   ArrowDownRight,
   FileText,
@@ -55,8 +57,8 @@ import { AnimatedProgress } from "@/components/ui/animated-progress";
 import { AnimatedBadge, StatusBadge } from "@/components/ui/animated-badge";
 import { AnimatedButton } from "@/components/ui/animated-button";
 
-/* ── Data ── */
-const trendData = [
+/* ── Fallback data (shown until /api/dashboard/overview responds) ── */
+const fallbackTrend = [
   { month: "Jan", score: 65, opportunity: 48, risk: 35 },
   { month: "Feb", score: 72, opportunity: 55, risk: 32 },
   { month: "Mar", score: 68, opportunity: 52, risk: 38 },
@@ -65,67 +67,13 @@ const trendData = [
   { month: "Jun", score: 94, opportunity: 78, risk: 20 },
 ];
 
-const barData = [
-  { sector: "Healthcare", funding: 42, growth: 28 },
-  { sector: "FinTech", funding: 38, growth: 22 },
-  { sector: "EdTech", funding: 24, growth: 18 },
-  { sector: "SaaS", funding: 55, growth: 35 },
-  { sector: "CleanTech", funding: 18, growth: 42 },
-];
-
-const pieData = [
-  { name: "TechCorp AI", value: 28, color: "#6366f1" },
-  { name: "DataGenius", value: 22, color: "#a855f7" },
-  { name: "InsightLab", value: 15, color: "#06b6d4" },
-  { name: "MarketMind", value: 12, color: "#10b981" },
-  { name: "Others", value: 23, color: "#f59e0b" },
-];
-
-const radarData = [
-  { metric: "Research", you: 94, avg: 62 },
-  { metric: "Speed", you: 88, avg: 54 },
-  { metric: "Accuracy", you: 91, avg: 67 },
-  { metric: "Coverage", you: 85, avg: 58 },
-  { metric: "Reports", you: 79, avg: 48 },
-  { metric: "Insights", you: 96, avg: 61 },
-];
-
-const competitors = [
-  {
-    name: "TechCorp AI",
-    marketShare: 28,
-    threat: "high",
-    trend: "up",
-    revenue: "$45M",
-  },
-  {
-    name: "DataGenius",
-    marketShare: 22,
-    threat: "medium",
-    trend: "down",
-    revenue: "$22M",
-  },
-  {
-    name: "InsightLab",
-    marketShare: 15,
-    threat: "low",
-    trend: "stable",
-    revenue: "$8M",
-  },
-  {
-    name: "MarketMind",
-    marketShare: 12,
-    threat: "low",
-    trend: "up",
-    revenue: "$15M",
-  },
-  {
-    name: "DeepAnalytix",
-    marketShare: 8,
-    threat: "low",
-    trend: "stable",
-    revenue: "$5M",
-  },
+const fallbackRadar = [
+  { metric: "Research", you: 0, avg: 62 },
+  { metric: "Speed", you: 0, avg: 54 },
+  { metric: "Accuracy", you: 0, avg: 67 },
+  { metric: "Coverage", you: 0, avg: 58 },
+  { metric: "Reports", you: 0, avg: 48 },
+  { metric: "Insights", you: 0, avg: 61 },
 ];
 
 const agents: Array<{
@@ -141,32 +89,33 @@ const agents: Array<{
   { name: "Risk Agent", status: "pending", progress: 0 },
 ];
 
-const recentResearch = [
-  { title: "Healthcare AI Market Analysis", date: "2 hours ago", score: 94 },
-  { title: "EdTech Competitive Landscape", date: "5 hours ago", score: 87 },
-  { title: "FinTech Startup Opportunity", date: "1 day ago", score: 76 },
-];
-
-const swotData = {
-  strengths: [
-    "Strong AI capabilities",
-    "Healthcare expertise",
-    "Fast processing",
-    "Scalable architecture",
-  ],
-  weaknesses: ["New market entrant", "Limited brand awareness"],
-  opportunities: [
-    "Growing AI market",
-    "Healthcare sector growth",
-    "API ecosystem",
-    "Enterprise demand",
-  ],
-  threats: [
-    "Established competitors",
-    "Data privacy regulations",
-    "Economic uncertainty",
-  ],
+type DashboardOverview = {
+  selected_report_id: string | null;
+  kpis: {
+    market_score: number;
+    opportunity_score: number;
+    competitors_found: number;
+    reports_count: number;
+  };
+  trend: Array<{ month: string; score: number; opportunity: number; risk: number }>;
+  funding_by_sector: Array<{ sector: string; funding: number; growth: number }>;
+  pie: Array<{ name: string; value: number; color: string }>;
+  radar: Array<{ metric: string; you: number; avg: number }>;
+  competitors: Array<{ name: string; marketShare: number; threat: string; trend: string; revenue: string }>;
+  recent_research: Array<{ title: string; date: number; score: number; id: string }>;
+  swot: { strengths: string[]; weaknesses: string[]; opportunities: string[]; threats: string[] };
 };
+
+type ReportOption = { id: string; title: string };
+
+function timeAgo(epochSeconds: number) {
+  const diffMs = Date.now() - epochSeconds * 1000;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
 
 /* ── Recharts shared styles ── */
 const tooltipStyle = {
@@ -187,6 +136,71 @@ const axisStyle = {
 };
 
 export default function DashboardPage() {
+  const [overview, setOverview] = useState<DashboardOverview | null>(null);
+  const [reportOptions, setReportOptions] = useState<ReportOption[]>([]);
+  const [selectedReportId, setSelectedReportId] = useState<string>("all");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [projectPickerOpen, setProjectPickerOpen] = useState(false);
+  const projectPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!projectPickerOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (projectPickerRef.current && !projectPickerRef.current.contains(e.target as Node)) {
+        setProjectPickerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [projectPickerOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/reports/", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: Array<{ id: string; title: string }>) => {
+        if (!cancelled) setReportOptions(data.map((r) => ({ id: r.id, title: r.title })));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const query = selectedReportId !== "all" ? `?report_id=${selectedReportId}` : "";
+    fetch(`/api/dashboard/overview${query}`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) setOverview(data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedReportId, refreshKey]);
+
+  const trendData = overview?.trend?.length ? overview.trend : fallbackTrend;
+  const barData = overview?.funding_by_sector?.length
+    ? overview.funding_by_sector.map((d) => ({ sector: d.sector, funding: d.funding, growth: d.growth }))
+    : [];
+  const pieData = overview?.pie?.length ? overview.pie : [];
+  const radarData = overview?.radar?.length ? overview.radar : fallbackRadar;
+  const competitors = overview?.competitors ?? [];
+  const recentResearch = (overview?.recent_research ?? []).map((r) => ({
+    title: r.title,
+    date: timeAgo(r.date),
+    score: r.score,
+  }));
+  const swotData = {
+    strengths: overview?.swot?.strengths ?? [],
+    weaknesses: overview?.swot?.weaknesses ?? [],
+    opportunities: overview?.swot?.opportunities ?? [],
+    threats: overview?.swot?.threats ?? [],
+  };
+  const kpis = overview?.kpis;
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -202,15 +216,95 @@ export default function DashboardPage() {
             Here&apos;s your market intelligence overview for today
           </p>
         </div>
-        <div className="flex gap-3">
-          <AnimatedButton variant="secondary" size="sm">
+        <div className="flex items-center gap-3">
+          <div className="relative" ref={projectPickerRef}>
+            <button
+              type="button"
+              onClick={() => setProjectPickerOpen((v) => !v)}
+              className={`flex items-center gap-2 pl-3 pr-2.5 py-2 rounded-xl bg-white/[0.04] border text-sm text-white transition-colors w-[180px] sm:w-[220px] ${
+                projectPickerOpen
+                  ? "border-indigo-500/50 bg-white/[0.06]"
+                  : "border-white/[0.08] hover:border-white/[0.16] hover:bg-white/[0.06]"
+              }`}
+            >
+              <span className="flex-1 min-w-0 truncate text-left">
+                {selectedReportId === "all"
+                  ? "All projects"
+                  : (reportOptions.find((r) => r.id === selectedReportId)?.title ?? "All projects")}
+              </span>
+              <ChevronDown
+                className={`w-4 h-4 flex-shrink-0 text-white/40 transition-transform duration-200 ${projectPickerOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+
+            <AnimatePresence>
+              {projectPickerOpen && (
+                <motion.ul
+                  initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute z-20 mt-2 w-[240px] max-h-72 overflow-y-auto rounded-xl border border-white/[0.1] bg-black/90 backdrop-blur-2xl shadow-2xl shadow-black/40 p-1.5 space-y-0.5"
+                >
+                  <li
+                    onClick={() => {
+                      setSelectedReportId("all");
+                      setProjectPickerOpen(false);
+                    }}
+                    className={`flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors ${
+                      selectedReportId === "all"
+                        ? "bg-indigo-500/20 text-white"
+                        : "text-white/65 hover:bg-white/[0.06] hover:text-white"
+                    }`}
+                  >
+                    <span className="truncate">All projects</span>
+                    {selectedReportId === "all" && (
+                      <Check className="w-3.5 h-3.5 flex-shrink-0 text-indigo-300" />
+                    )}
+                  </li>
+
+                  {reportOptions.length === 0 && (
+                    <li className="px-3 py-2 text-xs text-white/30">No research runs yet</li>
+                  )}
+
+                  {reportOptions.map((r) => (
+                    <li
+                      key={r.id}
+                      onClick={() => {
+                        setSelectedReportId(r.id);
+                        setProjectPickerOpen(false);
+                      }}
+                      title={r.title}
+                      className={`flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors ${
+                        selectedReportId === r.id
+                          ? "bg-indigo-500/20 text-white"
+                          : "text-white/65 hover:bg-white/[0.06] hover:text-white"
+                      }`}
+                    >
+                      <span className="truncate">{r.title}</span>
+                      {selectedReportId === r.id && (
+                        <Check className="w-3.5 h-3.5 flex-shrink-0 text-indigo-300" />
+                      )}
+                    </li>
+                  ))}
+                </motion.ul>
+              )}
+            </AnimatePresence>
+          </div>
+          <AnimatedButton
+            variant="secondary"
+            size="sm"
+            onClick={() => setRefreshKey((k) => k + 1)}
+          >
             <RefreshCw className="w-4 h-4" />
             Refresh
           </AnimatedButton>
-          <AnimatedButton size="sm">
-            <Download className="w-4 h-4" />
-            Export Report
-          </AnimatedButton>
+          <a href={overview?.selected_report_id ? `/api/reports/${overview.selected_report_id}/download` : undefined}>
+            <AnimatedButton size="sm" disabled={!overview?.selected_report_id}>
+              <Download className="w-4 h-4" />
+              Export Report
+            </AnimatedButton>
+          </a>
         </div>
       </div>
 
@@ -220,8 +314,8 @@ export default function DashboardPage() {
           {
             icon: BarChart3,
             label: "Market Score",
-            value: "94.2",
-            change: "+12.4%",
+            value: kpis ? kpis.market_score.toFixed(1) : "—",
+            change: `${kpis?.reports_count ?? 0} reports`,
             trend: "up",
             color: "from-emerald-500 to-teal-500",
             bg: "rgba(16,185,129,0.08)",
@@ -229,8 +323,8 @@ export default function DashboardPage() {
           {
             icon: TrendingUp,
             label: "Opportunity Score",
-            value: "87.8",
-            change: "+8.2%",
+            value: kpis ? kpis.opportunity_score.toFixed(1) : "—",
+            change: "avg",
             trend: "up",
             color: "from-indigo-500 to-purple-500",
             bg: "rgba(99,102,241,0.08)",
@@ -238,17 +332,17 @@ export default function DashboardPage() {
           {
             icon: Building2,
             label: "Competitors Found",
-            value: "24",
-            change: "+3 new",
+            value: String(kpis?.competitors_found ?? 0),
+            change: "tracked",
             trend: "up",
             color: "from-purple-500 to-pink-500",
             bg: "rgba(168,85,247,0.08)",
           },
           {
             icon: Activity,
-            label: "Funding Activity",
-            value: "$2.1B",
-            change: "High",
+            label: "Research Runs",
+            value: String(kpis?.reports_count ?? 0),
+            change: "total",
             trend: "up",
             color: "from-cyan-500 to-blue-500",
             bg: "rgba(6,182,212,0.08)",
@@ -782,10 +876,10 @@ export default function DashboardPage() {
               ].map((q) => (
                 <div key={q.label} className={`p-3 rounded-xl border ${q.bg}`}>
                   <div className={`text-xs font-semibold mb-2 ${q.color}`}>
-                    {q.label} ({q.data.length})
+                    {q.label} ({(q.data ?? []).length})
                   </div>
                   <ul className="space-y-1">
-                    {q.data.slice(0, 2).map((t) => (
+                    {(q.data ?? []).slice(0, 2).map((t) => (
                       <li
                         key={t}
                         className="text-xs text-white/50 flex items-start gap-1"

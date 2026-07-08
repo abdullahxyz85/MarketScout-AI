@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Building2, Target, TrendingUp, ShieldAlert } from "lucide-react";
 import {
@@ -8,34 +9,48 @@ import {
   GlassCardHeader,
 } from "@/components/ui/glass-card";
 
-const competitors = [
-  {
-    name: "TechCorp AI",
-    segment: "Enterprise Analytics",
-    threat: "High",
-    marketShare: "28%",
-  },
-  {
-    name: "DataGenius",
-    segment: "SMB Intelligence",
-    threat: "Medium",
-    marketShare: "22%",
-  },
-  {
-    name: "InsightLab",
-    segment: "Healthcare Insights",
-    threat: "Low",
-    marketShare: "15%",
-  },
-  {
-    name: "MarketMind",
-    segment: "General Market Research",
-    threat: "Medium",
-    marketShare: "12%",
-  },
-];
+type ApiCompetitor = {
+  id: string;
+  name: string;
+  segment: string | null;
+  market_share: number | null;
+  threat: string | null;
+  trend: string | null;
+  revenue: string | null;
+};
 
 export default function CompetitorsPage() {
+  const [apiCompetitors, setApiCompetitors] = useState<ApiCompetitor[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/competitors", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: ApiCompetitor[]) => {
+        if (!cancelled) setApiCompetitors(data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const competitors = useMemo(
+    () =>
+      apiCompetitors.map((c) => ({
+        name: c.name,
+        segment: c.segment ?? "General Market",
+        threat: c.threat
+          ? c.threat[0].toUpperCase() + c.threat.slice(1)
+          : "Medium",
+        marketShare: `${c.market_share ?? 0}%`,
+      })),
+    [apiCompetitors],
+  );
+
+  const highThreatCount = apiCompetitors.filter((c) => c.threat === "high").length;
+  const topShare = apiCompetitors.reduce((max, c) => Math.max(max, c.market_share ?? 0), 0);
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <div>
@@ -52,10 +67,10 @@ export default function CompetitorsPage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "Competitors Tracked", value: "24", icon: Building2 },
-          { label: "High Threat", value: "3", icon: ShieldAlert },
-          { label: "Top Share", value: "28%", icon: Target },
-          { label: "Monthly Movement", value: "+4.2%", icon: TrendingUp },
+          { label: "Competitors Tracked", value: String(apiCompetitors.length), icon: Building2 },
+          { label: "High Threat", value: String(highThreatCount), icon: ShieldAlert },
+          { label: "Top Share", value: `${topShare}%`, icon: Target },
+          { label: "Monthly Movement", value: "—", icon: TrendingUp },
         ].map((metric, i) => (
           <motion.div
             key={metric.label}

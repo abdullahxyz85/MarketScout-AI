@@ -92,6 +92,13 @@ const agents = [
 
 type Stage = "input" | "running" | "done";
 
+type ResearchResult = {
+  score: number;
+  opportunity: number;
+  competitors: number;
+  riskLevel: string;
+};
+
 export default function ResearchPage() {
   const [idea, setIdea] = useState("");
   const [selectedIndustry, setSelectedIndustry] = useState("");
@@ -100,25 +107,74 @@ export default function ResearchPage() {
   const [stage, setStage] = useState<Stage>("input");
   const [activeAgent, setActiveAgent] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [reportId, setReportId] = useState<string | null>(null);
+  const [result, setResult] = useState<ResearchResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const startResearch = () => {
+  const startResearch = async () => {
     if (!idea.trim()) return;
     setStage("running");
-    let agentIdx = 0;
-    let pct = 0;
+    setError(null);
+    setProgress(0);
+    setActiveAgent(0);
 
-    const tick = setInterval(() => {
-      pct += 2;
-      setProgress(pct);
-      if (pct % 14 === 0) {
-        agentIdx = Math.min(agentIdx + 1, agents.length - 1);
-        setActiveAgent(agentIdx);
-      }
-      if (pct >= 100) {
-        clearInterval(tick);
-        setStage("done");
-      }
-    }, 120);
+    try {
+      const res = await fetch("/api/research/", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idea,
+          industry: selectedIndustry || null,
+          healthcare_mode: healthcareMode,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to start research");
+      const { report_id } = await res.json();
+      setReportId(report_id);
+
+      const eventSource = new EventSource(
+        `/api/research/${report_id}/stream`,
+      );
+      eventSource.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+        setProgress(data.progress ?? 0);
+        if (data.current_agent) {
+          const idx = agents.findIndex((a) => a.name === data.current_agent);
+          if (idx >= 0) setActiveAgent(idx);
+        }
+        if (data.status === "completed") {
+          eventSource.close();
+          setActiveAgent(agents.length - 1);
+          setProgress(100);
+          if (data.report_id) {
+            const reportRes = await fetch(`/api/reports/${data.report_id}`, {
+              credentials: "include",
+            });
+            if (reportRes.ok) {
+              const report = await reportRes.json();
+              setResult({
+                score: report.score,
+                opportunity: report.opportunity_score,
+                competitors: (report.chart_data?.pie ?? []).length,
+                riskLevel: report.risk_level,
+              });
+            }
+          }
+          setStage("done");
+        } else if (data.status === "failed") {
+          eventSource.close();
+          setError(data.error ?? "Research failed");
+          setStage("input");
+        }
+      };
+      eventSource.onerror = () => {
+        eventSource.close();
+      };
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start research");
+      setStage("input");
+    }
   };
 
   return (
@@ -134,6 +190,11 @@ export default function ResearchPage() {
         {healthcareMode && (
           <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-emerald-500/35 bg-emerald-500/15 px-3 py-1 text-xs text-emerald-300">
             <HeartPulse className="w-3.5 h-3.5" /> Healthcare Mode Active
+          </div>
+        )}
+        {error && (
+          <div className="mt-3 rounded-xl border border-red-500/35 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+            {error}
           </div>
         )}
       </div>
@@ -400,7 +461,9 @@ export default function ResearchPage() {
                 <p className="text-white/50 mb-6 text-sm">
                   Your market intelligence report is ready. Overall market
                   score:{" "}
-                  <span className="text-emerald-400 font-bold">94.2</span>
+                  <span className="text-emerald-400 font-bold">
+                    {result ? result.score.toFixed(1) : "—"}
+                  </span>
                   {healthcareMode ? (
                     <span className="text-cyan-300">
                       {" "}
@@ -409,9 +472,11 @@ export default function ResearchPage() {
                   ) : null}
                 </p>
                 <div className="flex gap-3 justify-center flex-wrap">
-                  <AnimatedButton size="md">
-                    <FileText className="w-4 h-4" /> View Report
-                  </AnimatedButton>
+                  <a href={reportId ? `/dashboard/reports` : undefined}>
+                    <AnimatedButton size="md">
+                      <FileText className="w-4 h-4" /> View Report
+                    </AnimatedButton>
+                  </a>
                   <AnimatedButton
                     variant="secondary"
                     size="md"
@@ -420,6 +485,8 @@ export default function ResearchPage() {
                       setIdea("");
                       setProgress(0);
                       setActiveAgent(0);
+                      setResult(null);
+                      setReportId(null);
                     }}
                   >
                     Start New Research
@@ -432,16 +499,24 @@ export default function ResearchPage() {
               {[
                 {
                   label: "Market Score",
-                  value: "94.2",
+                  value: result ? result.score.toFixed(1) : "—",
                   color: "text-emerald-400",
                 },
                 {
                   label: "Opportunity",
-                  value: "87.8",
+                  value: result ? result.opportunity.toFixed(1) : "—",
                   color: "text-indigo-400",
                 },
-                { label: "Competitors", value: "24", color: "text-purple-400" },
-                { label: "Risk Level", value: "Low", color: "text-cyan-400" },
+                {
+                  label: "Competitors",
+                  value: result ? String(result.competitors) : "—",
+                  color: "text-purple-400",
+                },
+                {
+                  label: "Risk Level",
+                  value: result?.riskLevel ?? "—",
+                  color: "text-cyan-400",
+                },
               ].map((m, i) => (
                 <motion.div
                   key={m.label}

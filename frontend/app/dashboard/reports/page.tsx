@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   FileText, Download, Eye, Share2, Star, BarChart3,
@@ -14,29 +14,36 @@ import {
 import { GlassCard, GlassCardContent, GlassCardHeader } from '@/components/ui/glass-card';
 import { AnimatedButton } from '@/components/ui/animated-button';
 
-const reports = [
-  { id: 1, title: 'Healthcare AI Market Analysis', description: 'Comprehensive analysis of the AI-powered healthcare market in North America', industry: 'Healthcare', score: 94, date: '2 hours ago', pages: 24, starred: true, icon: Heart, color: 'from-rose-500 to-pink-500', scoreData: [72, 78, 82, 88, 91, 94] },
-  { id: 2, title: 'EdTech Competitive Landscape', description: 'Deep dive into the online education market including 18 competitors', industry: 'EdTech', score: 87, date: '5 hours ago', pages: 18, starred: false, icon: BarChart3, color: 'from-indigo-500 to-purple-500', scoreData: [60, 65, 70, 75, 82, 87] },
-  { id: 3, title: 'FinTech Startup Opportunity', description: 'Market sizing and opportunity assessment for B2B payments startup', industry: 'FinTech', score: 76, date: '1 day ago', pages: 21, starred: true, icon: TrendingUp, color: 'from-emerald-500 to-teal-500', scoreData: [55, 58, 62, 68, 73, 76] },
-  { id: 4, title: 'SaaS Productivity Tools Market', description: 'Analysis of the enterprise productivity SaaS market for 2024', industry: 'SaaS', score: 81, date: '2 days ago', pages: 16, starred: false, icon: Zap, color: 'from-cyan-500 to-blue-500', scoreData: [58, 62, 67, 72, 78, 81] },
+type ApiReport = {
+  id: string;
+  title: string;
+  description: string | null;
+  industry: string | null;
+  score: number;
+  pages: number;
+  starred: boolean;
+  created_at: number;
+  chart_data: { trend?: Array<{ score: number }> };
+};
+
+const reportIcons = [Heart, BarChart3, TrendingUp, Zap];
+const reportColors = [
+  'from-rose-500 to-pink-500',
+  'from-indigo-500 to-purple-500',
+  'from-emerald-500 to-teal-500',
+  'from-cyan-500 to-blue-500',
 ];
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
 
-const industryData = [
-  { name: 'Healthcare', reports: 4, avgScore: 91 },
-  { name: 'FinTech', reports: 3, avgScore: 78 },
-  { name: 'EdTech', reports: 2, avgScore: 85 },
-  { name: 'SaaS', reports: 3, avgScore: 82 },
-];
-
-const pieData = [
-  { name: 'High (90+)', value: 3, color: '#10b981' },
-  { name: 'Good (75-89)', value: 7, color: '#6366f1' },
-  { name: 'Fair (<75)', value: 2, color: '#f59e0b' },
-];
-
-const activityData = months.map((m, i) => ({ month: m, reports: [1, 2, 2, 3, 2, 4][i], avgScore: [72, 76, 79, 83, 85, 87][i] }));
+function timeAgo(epochSeconds: number) {
+  const diffMs = Date.now() - epochSeconds * 1000;
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
 
 const scoreColor = (s: number) => s >= 90 ? 'text-emerald-400' : s >= 75 ? 'text-indigo-400' : 'text-yellow-400';
 
@@ -47,7 +54,87 @@ const tooltipStyle = {
 
 export default function ReportsPage() {
   const [search, setSearch] = useState('');
-  const [starred, setStarred] = useState<number[]>([1, 3]);
+  const [apiReports, setApiReports] = useState<ApiReport[]>([]);
+  const [starred, setStarred] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/reports/', { credentials: 'include' })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: ApiReport[]) => {
+        if (cancelled) return;
+        setApiReports(data);
+        setStarred(data.filter((r) => r.starred).map((r) => r.id));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const reports = useMemo(
+    () =>
+      apiReports.map((r, i) => {
+        const scoreData = r.chart_data?.trend?.length
+          ? r.chart_data.trend.slice(-6).map((p) => p.score)
+          : Array(6).fill(r.score);
+        return {
+          id: r.id,
+          title: r.title,
+          description: r.description ?? '',
+          industry: r.industry ?? 'General',
+          score: r.score,
+          date: timeAgo(r.created_at),
+          pages: r.pages,
+          starred: r.starred,
+          icon: reportIcons[i % reportIcons.length],
+          color: reportColors[i % reportColors.length],
+          scoreData,
+        };
+      }),
+    [apiReports],
+  );
+
+  const industryData = useMemo(() => {
+    const byIndustry = new Map<string, { reports: number; total: number }>();
+    for (const r of reports) {
+      const entry = byIndustry.get(r.industry) ?? { reports: 0, total: 0 };
+      entry.reports += 1;
+      entry.total += r.score;
+      byIndustry.set(r.industry, entry);
+    }
+    return Array.from(byIndustry.entries()).map(([name, v]) => ({
+      name,
+      reports: v.reports,
+      avgScore: Math.round(v.total / v.reports),
+    }));
+  }, [reports]);
+
+  const pieData = useMemo(() => {
+    const buckets = [
+      { name: 'High (90+)', value: 0, color: '#10b981' },
+      { name: 'Good (75-89)', value: 0, color: '#6366f1' },
+      { name: 'Fair (<75)', value: 0, color: '#f59e0b' },
+    ];
+    for (const r of reports) {
+      if (r.score >= 90) buckets[0].value += 1;
+      else if (r.score >= 75) buckets[1].value += 1;
+      else buckets[2].value += 1;
+    }
+    return buckets;
+  }, [reports]);
+
+  const activityData = useMemo(
+    () => months.map((m) => ({ month: m, reports: 0, avgScore: 0 })),
+    [],
+  );
+
+  const toggleStar = async (id: string) => {
+    const res = await fetch(`/api/reports/${id}/star`, { method: 'POST', credentials: 'include' });
+    if (res.ok) {
+      setStarred((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+    }
+  };
 
   const filtered = reports.filter((r) => r.title.toLowerCase().includes(search.toLowerCase()));
 
@@ -217,12 +304,14 @@ export default function ReportsPage() {
                       <motion.button whileHover={{ scale: 1.08 }} className="p-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/50 hover:text-white hover:bg-white/[0.08] transition-colors">
                         <Share2 className="w-3.5 h-3.5" />
                       </motion.button>
-                      <motion.button whileHover={{ scale: 1.08 }} onClick={() => setStarred(s => s.includes(r.id) ? s.filter(x => x !== r.id) : [...s, r.id])}
+                      <motion.button whileHover={{ scale: 1.08 }} onClick={() => toggleStar(r.id)}
                         className={`p-1.5 rounded-lg border transition-colors ${starred.includes(r.id) ? 'bg-yellow-500/10 border-yellow-500/25 text-yellow-400' : 'bg-white/[0.04] border-white/[0.08] text-white/50 hover:text-white'}`}>
                         <Star className="w-3.5 h-3.5" fill={starred.includes(r.id) ? 'currentColor' : 'none'} />
                       </motion.button>
                     </div>
-                    <AnimatedButton size="sm"><Download className="w-3.5 h-3.5" />Download</AnimatedButton>
+                    <a href={`/api/reports/${r.id}/download`}>
+                      <AnimatedButton size="sm"><Download className="w-3.5 h-3.5" />Download</AnimatedButton>
+                    </a>
                   </div>
                 </GlassCardContent>
               </GlassCard>

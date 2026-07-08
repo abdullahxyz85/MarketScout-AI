@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   HeartPulse,
@@ -34,44 +35,21 @@ import { AnimatedBadge } from "@/components/ui/animated-badge";
 import { AnimatedProgress } from "@/components/ui/animated-progress";
 import { AnimatedButton } from "@/components/ui/animated-button";
 
-const healthcareTrend = [
-  { month: "Jan", demand: 48, regulatory: 62, adoption: 40 },
-  { month: "Feb", demand: 54, regulatory: 66, adoption: 44 },
-  { month: "Mar", demand: 60, regulatory: 69, adoption: 51 },
-  { month: "Apr", demand: 67, regulatory: 73, adoption: 58 },
-  { month: "May", demand: 73, regulatory: 78, adoption: 64 },
-  { month: "Jun", demand: 81, regulatory: 82, adoption: 71 },
+const fallbackTrend = [
+  { month: "Jan", demand: 0, regulatory: 0, adoption: 0 },
 ];
 
-const readiness = [
-  { metric: "Clinical Need", score: 88 },
-  { metric: "Regulatory Fit", score: 74 },
-  { metric: "Provider Adoption", score: 79 },
-  { metric: "Reimbursement", score: 63 },
-  { metric: "Data Security", score: 92 },
-  { metric: "Pilot Feasibility", score: 84 },
-];
-
-const watchlist = [
-  {
-    name: "MediFlow AI",
-    focus: "Hospital operations",
-    stage: "Series B",
-    threat: "Medium",
-  },
-  {
-    name: "ClinicSense",
-    focus: "Primary care optimization",
-    stage: "Series A",
-    threat: "Low",
-  },
-  {
-    name: "TriageNova",
-    focus: "AI triage support",
-    stage: "Growth",
-    threat: "High",
-  },
-];
+type HealthcareOverview = {
+  kpis: {
+    tam: string;
+    clinical_demand: number;
+    regulatory_readiness: number;
+    provider_adoption: string;
+  };
+  trend: Array<{ month: string; demand: number; regulatory: number; adoption: number }>;
+  readiness: Array<{ metric: string; score: number }>;
+  watchlist: Array<{ name: string; focus: string; stage: string; threat: string }>;
+};
 
 const tooltipStyle = {
   contentStyle: {
@@ -85,6 +63,26 @@ const tooltipStyle = {
 };
 
 export default function HealthcareModePage() {
+  const [overview, setOverview] = useState<HealthcareOverview | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/healthcare/overview", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) setOverview(data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const healthcareTrend = overview?.trend?.length ? overview.trend : fallbackTrend;
+  const readiness = overview?.readiness ?? [];
+  const watchlist = overview?.watchlist ?? [];
+  const kpis = overview?.kpis;
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -106,10 +104,10 @@ export default function HealthcareModePage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "TAM (Healthcare)", value: "$847B", icon: Building2 },
-          { label: "Clinical Demand", value: "81", icon: HeartPulse },
-          { label: "Regulatory Readiness", value: "74", icon: ShieldCheck },
-          { label: "Provider Adoption", value: "+18%", icon: Stethoscope },
+          { label: "TAM (Healthcare)", value: kpis?.tam ?? "—", icon: Building2 },
+          { label: "Clinical Demand", value: String(kpis?.clinical_demand ?? "—"), icon: HeartPulse },
+          { label: "Regulatory Readiness", value: String(kpis?.regulatory_readiness ?? "—"), icon: ShieldCheck },
+          { label: "Provider Adoption", value: kpis?.provider_adoption ?? "—", icon: Stethoscope },
         ].map((metric, i) => (
           <motion.div
             key={metric.label}
