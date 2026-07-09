@@ -2,8 +2,9 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Github, Sparkles } from 'lucide-react';
+import { Github } from 'lucide-react';
 import { AnimatedBackground } from '@/components/landing/animated-background';
+import { Logo } from '@/components/ui/logo';
 
 export default function LoginPage() {
   return (
@@ -23,16 +24,8 @@ export default function LoginPage() {
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 group">
-            <motion.div
-              whileHover={{ scale: 1.1, rotate: 5 }}
-              className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-cyan-500 flex items-center justify-center shadow-glow"
-            >
-              <Sparkles className="w-6 h-6 text-white" />
-            </motion.div>
-            <span className="text-2xl font-bold text-white">
-              MarketScout <span className="text-gradient">AI</span>
-            </span>
+          <Link href="/" className="inline-flex items-center group">
+            <Logo size={40} />
           </Link>
           <p className="text-white/50 mt-2 text-sm">Sign in to your account</p>
         </div>
