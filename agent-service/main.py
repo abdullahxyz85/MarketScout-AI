@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
+from logging.handlers import RotatingFileHandler
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,11 +11,32 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from router import router
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-)
+_LOGS_DIR = os.path.join(os.path.dirname(__file__), "logs")
 
+
+def _setup_logging() -> None:
+    """Configure console + rotating-file logging for the entire service."""
+    fmt = "%(asctime)s %(levelname)s %(name)s: %(message)s"
+    logging.basicConfig(level=logging.INFO, format=fmt)
+
+    # Rotating file: logs/agent-service.log  (5 MB × 5 backups)
+    try:
+        os.makedirs(_LOGS_DIR, exist_ok=True)
+        fh = RotatingFileHandler(
+            os.path.join(_LOGS_DIR, "agent-service.log"),
+            maxBytes=5 * 1024 * 1024,
+            backupCount=5,
+            encoding="utf-8",
+        )
+        fh.setFormatter(logging.Formatter(fmt))
+        logging.getLogger().addHandler(fh)
+    except Exception as exc:
+        logging.getLogger("agent-service").warning(
+            "Could not set up log file: %s", exc
+        )
+
+
+_setup_logging()
 logger = logging.getLogger("agent-service")
 
 

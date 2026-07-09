@@ -25,6 +25,7 @@ import agents.swot_agent as swot_agent
 import agents.trend_agent as trend_agent
 import agents.validation_agent as validation_agent
 from schemas.state import ResearchState
+from services import agent_logger
 
 # Single source of truth for pipeline order — progress is derived from a step's
 # real position in this list (index / total), never a hand-picked percentage.
@@ -103,15 +104,20 @@ async def _run_step(
     agent_name = AGENT_SEQUENCE[step_index]
     await _push(job_id, {"progress": _progress_before(step_index), "current_agent": agent_name, "status": "running", "done": False})
     logger.info("job %s: %s started", job_id, agent_name)
+    asyncio.create_task(agent_logger.log_agent_start(job_id, agent_name))
     start = time.monotonic()
     try:
         result = await coro
     except Exception as exc:
         result = {}
         errors.append(f"{error_label}: {exc}")
-        logger.exception("job %s: %s failed after %.1fs", job_id, agent_name, time.monotonic() - start)
+        duration = time.monotonic() - start
+        logger.exception("job %s: %s failed after %.1fs", job_id, agent_name, duration)
+        asyncio.create_task(agent_logger.log_agent_error(job_id, agent_name, duration, str(exc)))
     else:
-        logger.info("job %s: %s completed in %.1fs", job_id, agent_name, time.monotonic() - start)
+        duration = time.monotonic() - start
+        logger.info("job %s: %s completed in %.1fs", job_id, agent_name, duration)
+        asyncio.create_task(agent_logger.log_agent_complete(job_id, agent_name, duration, result))
     progress = _progress_after(step_index)
     await _push(job_id, {"progress": progress, "current_agent": agent_name, "status": "completed", "done": False})
     return result, progress
@@ -460,8 +466,10 @@ async def run_pipeline(
         logger.exception("job %s: knowledge graph build failed", job_id)
         final_state["errors"] = list(final_state.get("errors", [])) + [f"KnowledgeGraph: {exc}"]
 
-    # Note: the terminal done=True SSE event (carrying the full result payload)
-    # is pushed by the caller (router.py's _pipeline_task) once it has assembled
-    # the complete response — pushing a done=True event here would race it and
-    # cause the SSE stream to close before the real result is ever sent.
+    # Fire-and-forget: log pipeline completion with all final scores
+    total_duration = time.monotonic() - pipeline_start
+    asyncio.create_task(
+        agent_logger.log_pipeline_complete(job_id, total_duration, dict(final_state))
+    )
+
     return final_state
