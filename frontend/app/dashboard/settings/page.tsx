@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   User,
@@ -21,6 +21,7 @@ import {
 import { GlassCard, GlassCardContent, GlassCardHeader } from '@/components/ui/glass-card';
 import { AnimatedButton } from '@/components/ui/animated-button';
 import { AnimatedBadge } from '@/components/ui/animated-badge';
+import { AGENT_SEQUENCE } from '@/lib/agents';
 
 const tabs = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -32,7 +33,22 @@ const tabs = [
 
 function ProfileTab() {
   const [saved, setSaved] = useState(false);
+  const [profile, setProfile] = useState<{ display_name?: string; email?: string } | null>(null);
   const save = () => { setSaved(true); setTimeout(() => setSaved(false), 2000); };
+
+  useEffect(() => {
+    fetch('/api/users/me', { credentials: 'include' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setProfile(data ?? {}))
+      .catch(() => setProfile({}));
+  }, []);
+
+  const displayName = profile?.display_name ?? '';
+  const email = profile?.email ?? '';
+  const initials = displayName
+    ? displayName.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()
+    : '—';
+
   return (
     <div className="space-y-6">
       <GlassCard>
@@ -42,18 +58,16 @@ function ProfileTab() {
         <GlassCardContent className="space-y-4">
           <div className="flex items-center gap-4 mb-6">
             <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-2xl shadow-glow">
-              JD
+              {initials}
             </div>
             <div>
-              <div className="text-white font-semibold">John Doe</div>
-              <div className="text-sm text-white/50">john@example.com</div>
-              <AnimatedBadge variant="gradient" className="mt-2">Professional Plan</AnimatedBadge>
+              <div className="text-white font-semibold">{displayName || 'Unnamed User'}</div>
+              <div className="text-sm text-white/50">{email}</div>
             </div>
           </div>
           {[
-            { label: 'Full Name', value: 'John Doe' },
-            { label: 'Email', value: 'john@example.com' },
-            { label: 'Company', value: 'My Startup Inc.' },
+            { label: 'Full Name', value: displayName },
+            { label: 'Email', value: email },
           ].map((f) => (
             <div key={f.label}>
               <label className="text-sm text-white/60 mb-1.5 block">{f.label}</label>
@@ -202,36 +216,26 @@ function BillingTab() {
 }
 
 function AgentsTab() {
-  const agentSettings = [
-    { name: 'Research Agent', enabled: true, depth: 'Deep' },
-    { name: 'Competitor Agent', enabled: true, depth: 'Standard' },
-    { name: 'Market Agent', enabled: true, depth: 'Deep' },
-    { name: 'Trend Agent', enabled: true, depth: 'Standard' },
-    { name: 'SWOT Agent', enabled: false, depth: 'Standard' },
-    { name: 'Risk Agent', enabled: true, depth: 'Standard' },
-  ];
-
-  const [settings, setSettings] = useState(agentSettings);
+  const [enabled, setEnabled] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(AGENT_SEQUENCE.map((a) => [a.name, true]))
+  );
 
   return (
     <GlassCard>
       <GlassCardHeader><h3 className="text-lg font-semibold text-white">AI Agent Configuration</h3></GlassCardHeader>
       <GlassCardContent className="space-y-3">
-        {settings.map((a, i) => (
+        {AGENT_SEQUENCE.map((a) => (
           <div key={a.name} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
             <div className="flex items-center gap-3">
-              <Zap className="w-5 h-5 text-indigo-400" />
-              <div>
-                <div className="text-sm font-medium text-white">{a.name}</div>
-                <div className="text-xs text-white/40">Depth: {a.depth}</div>
-              </div>
+              <a.icon className="w-5 h-5 text-indigo-400" />
+              <div className="text-sm font-medium text-white">{a.name}</div>
             </div>
             <motion.button
-              onClick={() => setSettings(s => s.map((x, j) => j === i ? { ...x, enabled: !x.enabled } : x))}
-              className={`w-12 h-6 rounded-full border transition-all duration-300 relative ${a.enabled ? 'bg-indigo-500 border-indigo-500' : 'bg-white/10 border-white/20'}`}
+              onClick={() => setEnabled((s) => ({ ...s, [a.name]: !s[a.name] }))}
+              className={`w-12 h-6 rounded-full border transition-all duration-300 relative ${enabled[a.name] ? 'bg-indigo-500 border-indigo-500' : 'bg-white/10 border-white/20'}`}
             >
               <motion.div
-                animate={{ x: a.enabled ? 24 : 2 }}
+                animate={{ x: enabled[a.name] ? 24 : 2 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                 className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow"
               />
