@@ -1,10 +1,6 @@
 'use client';
 
-<<<<<<< HEAD
-import { useState } from 'react';
-=======
 import { useEffect, useState } from 'react';
->>>>>>> add-ai-agent-service
 import { motion } from 'framer-motion';
 import {
   FileText, Download, Eye, Share2, Star, BarChart3,
@@ -49,13 +45,6 @@ const tooltipStyle = {
   labelStyle: { color: '#94a3b8' },
 };
 
-<<<<<<< HEAD
-export default function ReportsPage() {
-  const [search, setSearch] = useState('');
-  const [starred, setStarred] = useState<number[]>([1, 3]);
-
-  const filtered = reports.filter((r) => r.title.toLowerCase().includes(search.toLowerCase()));
-=======
 interface HistoryItem {
   job_id: string;
   idea?: string;
@@ -109,7 +98,6 @@ export default function ReportsPage() {
   }));
 
   const filtered = (liveReports ?? reports).filter((r) => r.title.toLowerCase().includes(search.toLowerCase()));
->>>>>>> add-ai-agent-service
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -282,9 +270,6 @@ export default function ReportsPage() {
                         <Star className="w-3.5 h-3.5" fill={starred.includes(r.id) ? 'currentColor' : 'none'} />
                       </motion.button>
                     </div>
-<<<<<<< HEAD
-                    <AnimatedButton size="sm"><Download className="w-3.5 h-3.5" />Download</AnimatedButton>
-=======
                     {(r as any).jobId ? (
                       <a href={`/api/agents/research/${(r as any).jobId}/report/pdf`} target="_blank" rel="noopener noreferrer">
                         <AnimatedButton size="sm"><Download className="w-3.5 h-3.5" />Download</AnimatedButton>
@@ -292,7 +277,6 @@ export default function ReportsPage() {
                     ) : (
                       <AnimatedButton size="sm"><Download className="w-3.5 h-3.5" />Download</AnimatedButton>
                     )}
->>>>>>> add-ai-agent-service
                   </div>
                 </GlassCardContent>
               </GlassCard>

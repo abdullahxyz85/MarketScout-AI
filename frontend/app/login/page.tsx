@@ -2,15 +2,8 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-<<<<<<< HEAD
-import { Github } from 'lucide-react';
-import { AnimatedBackground } from '@/components/landing/animated-background';
-import { Logo } from '@/components/ui/logo';
-import { GoogleIcon } from '@/components/ui/google-icon';
-=======
 import { Github, Sparkles } from 'lucide-react';
 import { AnimatedBackground } from '@/components/landing/animated-background';
->>>>>>> add-ai-agent-service
 
 export default function LoginPage() {
   return (
@@ -30,12 +23,6 @@ export default function LoginPage() {
       >
         {/* Logo */}
         <div className="text-center mb-8">
-<<<<<<< HEAD
-          <Link href="/" className="inline-flex items-center group">
-            <motion.div whileHover={{ scale: 1.05 }}>
-              <Logo size={36} className="[&_[data-slot=wordmark]]:text-2xl" />
-            </motion.div>
-=======
           <Link href="/" className="inline-flex items-center gap-2 group">
             <motion.div
               whileHover={{ scale: 1.1, rotate: 5 }}
@@ -46,7 +33,6 @@ export default function LoginPage() {
             <span className="text-2xl font-bold text-white">
               MarketScout <span className="text-gradient">AI</span>
             </span>
->>>>>>> add-ai-agent-service
           </Link>
           <p className="text-white/50 mt-2 text-sm">Sign in to your account</p>
         </div>
@@ -55,30 +41,6 @@ export default function LoginPage() {
         <div className="relative rounded-3xl overflow-hidden backdrop-blur-2xl border border-white/10 bg-gradient-to-br from-white/[0.08] to-white/[0.02] shadow-2xl">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5 pointer-events-none" />
 
-<<<<<<< HEAD
-          <div className="relative p-8">
-            {/* Social login */}
-            <div className="space-y-3">
-              <motion.a
-                href="/api/auth/github/login"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full flex items-center justify-center gap-3 py-3 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 hover:text-white transition-all text-sm font-medium"
-              >
-                <Github className="w-5 h-5" />
-                Continue with GitHub
-              </motion.a>
-              <motion.a
-                href="/api/auth/google/login"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full flex items-center justify-center gap-3 py-3 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 hover:text-white transition-all text-sm font-medium"
-              >
-                <GoogleIcon className="w-5 h-5" />
-                Continue with Google
-              </motion.a>
-            </div>
-=======
           <div className="relative p-8 space-y-3">
             <motion.a
               href="/api/auth/github/login"
@@ -104,7 +66,6 @@ export default function LoginPage() {
               </svg>
               Continue with Google
             </motion.a>
->>>>>>> add-ai-agent-service
           </div>
         </div>
 

@@ -1,12 +1,6 @@
-<<<<<<< HEAD
-"use client";
-
-import { motion } from "framer-motion";
-=======
 'use client';
 
 import { motion } from 'framer-motion';
->>>>>>> add-ai-agent-service
 import {
   LayoutDashboard,
   Search,
@@ -20,24 +14,6 @@ import {
   AlertCircle,
   Zap,
   ChevronRight,
-<<<<<<< HEAD
-} from "lucide-react";
-import { AnimatedProgress } from "@/components/ui/animated-progress";
-import { AnimatedBadge, StatusBadge } from "@/components/ui/animated-badge";
-
-const sidebarItems = [
-  { icon: LayoutDashboard, label: "Dashboard", active: true },
-  { icon: Search, label: "Research", active: false },
-  { icon: Users, label: "Competitors", active: false },
-  { icon: FileText, label: "Reports", active: false },
-  { icon: Settings, label: "Settings", active: false },
-];
-
-const competitors = [
-  { name: "TechCorp AI", marketShare: "28%", threat: "High" as const },
-  { name: "DataGenius", marketShare: "22%", threat: "Medium" as const },
-  { name: "InsightLab", marketShare: "15%", threat: "Low" as const },
-=======
 } from 'lucide-react';
 import { AnimatedProgress } from '@/components/ui/animated-progress';
 import { AnimatedBadge, StatusBadge } from '@/components/ui/animated-badge';
@@ -54,7 +30,6 @@ const competitors = [
   { name: 'TechCorp AI', marketShare: '28%', threat: 'High' as const },
   { name: 'DataGenius', marketShare: '22%', threat: 'Medium' as const },
   { name: 'InsightLab', marketShare: '15%', threat: 'Low' as const },
->>>>>>> add-ai-agent-service
 ];
 
 export function DashboardPreviewSection() {
@@ -71,12 +46,7 @@ export function DashboardPreviewSection() {
             Powerful <span className="text-gradient">Dashboard</span>
           </h2>
           <p className="text-lg text-white/60 max-w-2xl mx-auto">
-<<<<<<< HEAD
-            Monitor all your research projects, track agent progress, and access
-            insights in real-time.
-=======
             Monitor all your research projects, track agent progress, and access insights in real-time.
->>>>>>> add-ai-agent-service
           </p>
         </motion.div>
 
@@ -84,27 +54,15 @@ export function DashboardPreviewSection() {
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-<<<<<<< HEAD
-          className="relative rounded-3xl overflow-hidden backdrop-blur-2xl border border-white/10 bg-gradient-to-br from-white/[0.05] via-white/[0.03] to-transparent shadow-2xl"
-=======
           className="relative rounded-3xl overflow-hidden backdrop-blur-xl border border-white/10 bg-gradient-to-br from-white/[0.08] to-white/[0.02] shadow-2xl"
->>>>>>> add-ai-agent-service
         >
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5" />
 
           <div className="grid lg:grid-cols-[240px_1fr]">
             {/* Sidebar */}
-<<<<<<< HEAD
-            <div className="border-r border-white/10 p-4 space-y-1 hidden lg:block bg-white/[0.015]">
-              <div className="px-3 py-2 mb-4">
-                <span className="text-lg font-bold text-white">
-                  MarketScout
-                </span>
-=======
             <div className="border-r border-white/10 p-4 space-y-1 hidden lg:block">
               <div className="px-3 py-2 mb-4">
                 <span className="text-lg font-bold text-white">MarketScout</span>
->>>>>>> add-ai-agent-service
               </div>
               {sidebarItems.map((item) => (
                 <motion.div
@@ -112,13 +70,8 @@ export function DashboardPreviewSection() {
                   whileHover={{ x: 4 }}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
                     item.active
-<<<<<<< HEAD
-                      ? "bg-white/10 text-white"
-                      : "text-white/60 hover:text-white hover:bg-white/5"
-=======
                       ? 'bg-white/10 text-white'
                       : 'text-white/60 hover:text-white hover:bg-white/5'
->>>>>>> add-ai-agent-service
                   }`}
                 >
                   <item.icon className="w-5 h-5" />
@@ -135,79 +88,28 @@ export function DashboardPreviewSection() {
               {/* Top Metrics */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 {[
-<<<<<<< HEAD
-                  {
-                    icon: BarChart3,
-                    label: "Market Score",
-                    value: "94.2",
-                    change: "+12%",
-                    color: "text-emerald-400",
-                  },
-                  {
-                    icon: TrendingUp,
-                    label: "Opportunity",
-                    value: "87.8",
-                    change: "+8%",
-                    color: "text-indigo-400",
-                  },
-                  {
-                    icon: Building2,
-                    label: "Competition",
-                    value: "Medium",
-                    change: "24 found",
-                    color: "text-purple-400",
-                  },
-                  {
-                    icon: Activity,
-                    label: "Funding Activity",
-                    value: "High",
-                    change: "$2.1B",
-                    color: "text-cyan-400",
-                  },
-=======
                   { icon: BarChart3, label: 'Market Score', value: '94.2', change: '+12%', color: 'text-emerald-400' },
                   { icon: TrendingUp, label: 'Opportunity', value: '87.8', change: '+8%', color: 'text-indigo-400' },
                   { icon: Building2, label: 'Competition', value: 'Medium', change: '24 found', color: 'text-purple-400' },
                   { icon: Activity, label: 'Funding Activity', value: 'High', change: '$2.1B', color: 'text-cyan-400' },
->>>>>>> add-ai-agent-service
                 ].map((metric) => (
                   <motion.div
                     key={metric.label}
                     whileHover={{ y: -2 }}
-<<<<<<< HEAD
-                    className="p-4 rounded-xl bg-white/[0.035] border border-white/10"
-                  >
-                    <metric.icon className={`w-5 h-5 ${metric.color} mb-2`} />
-                    <div className="text-2xl font-bold text-white">
-                      {metric.value}
-                    </div>
-                    <div className="text-xs text-white/50">{metric.label}</div>
-                    <div className={`text-xs mt-1 ${metric.color}`}>
-                      {metric.change}
-                    </div>
-=======
                     className="p-4 rounded-xl bg-white/5 border border-white/10"
                   >
                     <metric.icon className={`w-5 h-5 ${metric.color} mb-2`} />
                     <div className="text-2xl font-bold text-white">{metric.value}</div>
                     <div className="text-xs text-white/50">{metric.label}</div>
                     <div className={`text-xs mt-1 ${metric.color}`}>{metric.change}</div>
->>>>>>> add-ai-agent-service
                   </motion.div>
                 ))}
               </div>
 
               <div className="grid lg:grid-cols-2 gap-6">
                 {/* Competitor Table */}
-<<<<<<< HEAD
-                <div className="p-4 rounded-xl bg-white/[0.035] border border-white/10">
-                  <h3 className="text-sm font-semibold text-white mb-4">
-                    Competitor Analysis
-                  </h3>
-=======
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <h3 className="text-sm font-semibold text-white mb-4">Competitor Analysis</h3>
->>>>>>> add-ai-agent-service
                   <div className="space-y-3">
                     {competitors.map((comp, i) => (
                       <div
@@ -219,65 +121,17 @@ export function DashboardPreviewSection() {
                             {i + 1}
                           </div>
                           <div>
-<<<<<<< HEAD
-                            <div className="text-sm font-medium text-white">
-                              {comp.name}
-                            </div>
-                            <div className="text-xs text-white/50">
-                              Market: {comp.marketShare}
-                            </div>
-                          </div>
-                        </div>
-                        <StatusBadge
-                          status={
-                            comp.threat === "High"
-                              ? "running"
-                              : comp.threat === "Medium"
-                                ? "pending"
-                                : "completed"
-                          }
-                        />
-=======
                             <div className="text-sm font-medium text-white">{comp.name}</div>
                             <div className="text-xs text-white/50">Market: {comp.marketShare}</div>
                           </div>
                         </div>
                         <StatusBadge status={comp.threat === 'High' ? 'running' : comp.threat === 'Medium' ? 'pending' : 'completed'} />
->>>>>>> add-ai-agent-service
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {/* SWOT Panel */}
-<<<<<<< HEAD
-                <div className="p-4 rounded-xl bg-white/[0.035] border border-white/10">
-                  <h3 className="text-sm font-semibold text-white mb-4">
-                    SWOT Analysis
-                  </h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      {
-                        label: "Strengths",
-                        count: 8,
-                        color: "from-emerald-500 to-teal-500",
-                      },
-                      {
-                        label: "Weaknesses",
-                        count: 4,
-                        color: "from-red-500 to-rose-500",
-                      },
-                      {
-                        label: "Opportunities",
-                        count: 12,
-                        color: "from-indigo-500 to-blue-500",
-                      },
-                      {
-                        label: "Threats",
-                        count: 6,
-                        color: "from-orange-500 to-amber-500",
-                      },
-=======
                 <div className="p-4 rounded-xl bg-white/5 border border-white/10">
                   <h3 className="text-sm font-semibold text-white mb-4">SWOT Analysis</h3>
                   <div className="grid grid-cols-2 gap-3">
@@ -286,33 +140,16 @@ export function DashboardPreviewSection() {
                       { label: 'Weaknesses', count: 4, color: 'from-red-500 to-rose-500' },
                       { label: 'Opportunities', count: 12, color: 'from-indigo-500 to-blue-500' },
                       { label: 'Threats', count: 6, color: 'from-orange-500 to-amber-500' },
->>>>>>> add-ai-agent-service
                     ].map((item) => (
                       <div
                         key={item.label}
                         className="p-3 rounded-lg bg-white/5 border border-white/10"
                       >
-<<<<<<< HEAD
-                        <div
-                          className={`text-xs font-medium mb-2 bg-gradient-to-r ${item.color} bg-clip-text text-transparent`}
-                        >
-                          {item.label}
-                        </div>
-                        <div className="text-2xl font-bold text-white">
-                          {item.count}
-                        </div>
-                        <AnimatedProgress
-                          value={item.count}
-                          max={15}
-                          className="mt-2"
-                        />
-=======
                         <div className={`text-xs font-medium mb-2 bg-gradient-to-r ${item.color} bg-clip-text text-transparent`}>
                           {item.label}
                         </div>
                         <div className="text-2xl font-bold text-white">{item.count}</div>
                         <AnimatedProgress value={item.count} max={15} className="mt-2" />
->>>>>>> add-ai-agent-service
                       </div>
                     ))}
                   </div>
@@ -320,49 +157,20 @@ export function DashboardPreviewSection() {
               </div>
 
               {/* Agent Status */}
-<<<<<<< HEAD
-              <div className="mt-6 p-4 rounded-xl bg-gradient-to-r from-indigo-500/12 via-purple-500/10 to-cyan-500/12 border border-white/10">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Zap className="w-5 h-5 text-indigo-400" />
-                    <span className="text-sm font-semibold text-white">
-                      AI Agents Status
-                    </span>
-=======
               <div className="mt-6 p-4 rounded-xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-cyan-500/10 border border-white/10">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Zap className="w-5 h-5 text-indigo-400" />
                     <span className="text-sm font-semibold text-white">AI Agents Status</span>
->>>>>>> add-ai-agent-service
                   </div>
                   <AnimatedBadge variant="success">8 Active</AnimatedBadge>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-<<<<<<< HEAD
-                  {[
-                    "Research",
-                    "Competitor",
-                    "Market",
-                    "Trend",
-                    "SWOT",
-                    "Risk",
-                  ].map((agent, i) => (
-                    <motion.div
-                      key={agent}
-                      animate={{ opacity: [0.7, 1, 0.7] }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        delay: i * 0.2,
-                      }}
-=======
                   {['Research', 'Competitor', 'Market', 'Trend', 'SWOT', 'Risk'].map((agent, i) => (
                     <motion.div
                       key={agent}
                       animate={{ opacity: [0.7, 1, 0.7] }}
                       transition={{ duration: 2, repeat: Infinity, delay: i * 0.2 }}
->>>>>>> add-ai-agent-service
                       className="px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs text-white/80"
                     >
                       {agent}

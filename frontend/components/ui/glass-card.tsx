@@ -1,16 +1,8 @@
-<<<<<<< HEAD
-"use client";
-
-import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
-import { ReactNode } from "react";
-=======
 'use client';
 
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { ReactNode } from 'react';
->>>>>>> add-ai-agent-service
 
 interface GlassCardProps {
   children: ReactNode;
@@ -19,27 +11,6 @@ interface GlassCardProps {
   hover?: boolean;
 }
 
-<<<<<<< HEAD
-export function GlassCard({
-  children,
-  className,
-  glow,
-  hover = true,
-}: GlassCardProps) {
-  return (
-    <motion.div
-      whileHover={hover ? { y: -4, scale: 1.01 } : undefined}
-      transition={{ type: "spring", stiffness: 400, damping: 17 }}
-      className={cn(
-        "relative overflow-hidden rounded-2xl",
-        "bg-gradient-to-br from-white/[0.05] via-white/[0.03] to-transparent",
-        "backdrop-blur-xl",
-        "border border-white/[0.06]",
-        "shadow-xl shadow-black/15",
-        glow && "shadow-glow",
-        hover && "cursor-pointer",
-        className,
-=======
 export function GlassCard({ children, className, glow, hover = true }: GlassCardProps) {
   return (
     <motion.div
@@ -54,7 +25,6 @@ export function GlassCard({ children, className, glow, hover = true }: GlassCard
         glow && 'shadow-glow',
         hover && 'cursor-pointer',
         className
->>>>>>> add-ai-agent-service
       )}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5 opacity-0 transition-opacity duration-500 hover:opacity-100" />
@@ -63,45 +33,6 @@ export function GlassCard({ children, className, glow, hover = true }: GlassCard
   );
 }
 
-<<<<<<< HEAD
-export function GlassCardHeader({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={cn("p-6 border-b border-white/5", className)}>
-      {children}
-    </div>
-  );
-}
-
-export function GlassCardContent({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return <div className={cn("p-6", className)}>{children}</div>;
-}
-
-export function GlassCardFooter({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div
-      className={cn("p-6 pt-0 border-t border-white/5 mt-6 pt-4", className)}
-    >
-      {children}
-    </div>
-=======
 export function GlassCardHeader({ children, className }: { children: ReactNode; className?: string }) {
   return <div className={cn('p-6 border-b border-white/5', className)}>{children}</div>;
 }
@@ -113,6 +44,5 @@ export function GlassCardContent({ children, className }: { children: ReactNode;
 export function GlassCardFooter({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div className={cn('p-6 pt-0 border-t border-white/5 mt-6 pt-4', className)}>{children}</div>
->>>>>>> add-ai-agent-service
   );
 }

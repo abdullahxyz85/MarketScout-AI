@@ -4,8 +4,6 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: { unoptimized: true },
-<<<<<<< HEAD
-=======
   async rewrites() {
     // These rewrites are used in local development (npm run dev).
     // In production, nginx handles all routing.
@@ -22,7 +20,6 @@ const nextConfig = {
       },
     ];
   },
->>>>>>> add-ai-agent-service
 };
 
 module.exports = nextConfig;
