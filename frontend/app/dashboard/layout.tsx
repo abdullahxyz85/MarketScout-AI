@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Search,
@@ -17,20 +17,20 @@ import {
   X,
   Sliders,
   GitCompare,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Logo } from '@/components/ui/logo';
-import { AnimatedBackground } from '@/components/landing/animated-background';
-import { ResearchProvider, useResearch } from '@/lib/research-context';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Logo } from "@/components/ui/logo";
+import { AnimatedBackground } from "@/components/landing/animated-background";
+import { ResearchProvider, useResearch } from "@/lib/research-context";
 
 const sidebarItems = [
-  { icon: LayoutDashboard, label: 'Dashboard',    href: '/dashboard' },
-  { icon: Search,          label: 'New Research', href: '/dashboard/research' },
-  { icon: Users,           label: 'Competitors',  href: '/dashboard/competitors' },
-  { icon: FileText,        label: 'Reports',      href: '/dashboard/reports' },
-  { icon: Sliders,         label: 'Scenarios',    href: '/dashboard/scenarios' },
-  { icon: GitCompare,      label: 'Compare',      href: '/dashboard/compare' },
-  { icon: Settings,        label: 'Settings',     href: '/dashboard/settings' },
+  { icon: LayoutDashboard, label: "Dashboard",    href: "/dashboard" },
+  { icon: Search,          label: "New Research", href: "/dashboard/research" },
+  { icon: Users,           label: "Competitors",  href: "/dashboard/competitors" },
+  { icon: FileText,        label: "Reports",      href: "/dashboard/reports" },
+  { icon: Sliders,         label: "Scenarios",    href: "/dashboard/scenarios" },
+  { icon: GitCompare,      label: "Compare",      href: "/dashboard/compare" },
+  { icon: Settings,        label: "Settings",     href: "/dashboard/settings" },
 ];
 
 type CurrentUser = {
@@ -57,10 +57,12 @@ function SidebarContent({
 }) {
   return (
     <>
-      <div className={cn(
-        'flex items-center border-b border-white/10 transition-all duration-300',
-        mobile ? 'p-4 gap-3' : collapsed ? 'p-4 justify-center' : 'p-4 gap-2'
-      )}>
+      <div
+        className={cn(
+          "flex items-center border-b border-white/10 transition-all duration-300",
+          mobile ? "p-4 gap-3" : collapsed ? "p-4 justify-center" : "p-4 gap-2",
+        )}
+      >
         {(!collapsed || mobile) && (
           <Link href="/" className="min-w-0">
             <Logo size={28} />
@@ -76,11 +78,18 @@ function SidebarContent({
             onClick={onToggleCollapsed}
             className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors flex-shrink-0"
           >
-            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            {collapsed ? (
+              <ChevronRight className="w-4 h-4" />
+            ) : (
+              <ChevronLeft className="w-4 h-4" />
+            )}
           </button>
         )}
         {mobile && (
-          <button onClick={onCloseMobile} className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white ml-auto">
+          <button
+            onClick={onCloseMobile}
+            className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white ml-auto"
+          >
             <X className="w-4 h-4" />
           </button>
         )}
@@ -95,24 +104,38 @@ function SidebarContent({
               href={item.href}
               onClick={onCloseMobile}
               className={cn(
-                'flex items-center gap-3 rounded-xl transition-all duration-200 group relative',
-                collapsed && !mobile ? 'px-2 py-3 justify-center' : 'px-3 py-2.5',
+                "flex items-center gap-3 rounded-xl transition-all duration-200 group relative",
+                collapsed && !mobile
+                  ? "px-2 py-3 justify-center"
+                  : "px-3 py-2.5",
                 active
-                  ? 'bg-indigo-500/20 text-white border border-indigo-500/30'
-                  : 'text-white/50 hover:text-white hover:bg-white/5'
+                  ? "bg-indigo-500/20 text-white border border-indigo-500/30"
+                  : "text-white/50 hover:text-white hover:bg-white/5",
               )}
             >
               {active && (
                 <motion.div
-                  layoutId={mobile ? 'active-mobile' : 'active-indicator'}
+                  layoutId={mobile ? "active-mobile" : "active-indicator"}
                   className="absolute inset-0 rounded-xl bg-indigo-500/10 border border-indigo-500/20"
-                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
                 />
               )}
-              <div className={cn('relative z-10 flex items-center gap-3', collapsed && !mobile ? '' : 'w-full')}>
-                <item.icon className={cn('flex-shrink-0', collapsed && !mobile ? 'w-5 h-5' : 'w-4 h-4')} />
+              <div
+                className={cn(
+                  "relative z-10 flex items-center gap-3",
+                  collapsed && !mobile ? "" : "w-full",
+                )}
+              >
+                <item.icon
+                  className={cn(
+                    "flex-shrink-0",
+                    collapsed && !mobile ? "w-5 h-5" : "w-4 h-4",
+                  )}
+                />
                 {(!collapsed || mobile) && (
-                  <span className="text-sm font-medium whitespace-nowrap">{item.label}</span>
+                  <span className="text-sm font-medium whitespace-nowrap">
+                    {item.label}
+                  </span>
                 )}
                 {active && !collapsed && !mobile && (
                   <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400" />
@@ -127,19 +150,25 @@ function SidebarContent({
         <button
           onClick={onLogout}
           className={cn(
-            'flex items-center gap-3 rounded-xl text-white/40 hover:text-white hover:bg-white/5 transition-all w-full',
-            collapsed && !mobile ? 'px-2 py-3 justify-center' : 'px-3 py-2.5'
+            "flex items-center gap-3 rounded-xl text-white/40 hover:text-white hover:bg-white/5 transition-all w-full",
+            collapsed && !mobile ? "px-2 py-3 justify-center" : "px-3 py-2.5",
           )}
         >
           <LogOut className="w-4 h-4 flex-shrink-0" />
-          {(!collapsed || mobile) && <span className="text-sm font-medium">Log out</span>}
+          {(!collapsed || mobile) && (
+            <span className="text-sm font-medium">Log out</span>
+          )}
         </button>
       </div>
     </>
   );
 }
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <ResearchProvider>
       <DashboardLayoutInner>{children}</DashboardLayoutInner>
@@ -154,45 +183,54 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { stage, progress, activeAgentName } = useResearch();
-  const showResearchBadge = stage === 'running' && pathname !== '/dashboard/research';
+  const showResearchBadge =
+    stage === "running" && pathname !== "/dashboard/research";
 
   useEffect(() => {
-    fetch('/api/users/me', { credentials: 'include' })
+    fetch("/api/users/me", { credentials: "include" })
       .then((res) => {
-        if (!res.ok) throw new Error('unauthenticated');
+        if (!res.ok) throw new Error("unauthenticated");
         return res.json();
       })
       .then((data) =>
-        setUser({ id: data.id, email: data.email, name: data.display_name, picture: data.avatar_url })
+        setUser({
+          id: data.id,
+          email: data.email,
+          name: data.display_name,
+          picture: data.avatar_url,
+        }),
       )
-      .catch(() => router.replace('/login'));
+      .catch(() => router.replace("/login"));
   }, [router]);
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-    router.replace('/login');
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    router.replace("/login");
   };
 
-  const initials = (user?.name || user?.email || '?')
+  const initials = (user?.name || user?.email || "?")
     .trim()
     .split(/\s+/)
     .map((p) => p[0])
-    .join('')
+    .join("")
     .slice(0, 2)
     .toUpperCase();
 
   const isActive = (href: string) =>
-    href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href);
+    href === "/dashboard"
+      ? pathname === "/dashboard"
+      : pathname.startsWith(href);
 
   return (
-    <div className="min-h-screen bg-[#050508]">
+    <div className="min-h-screen bg-[#050508] relative overflow-hidden">
       <AnimatedBackground />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.08),transparent_38%),radial-gradient(circle_at_80%_20%,rgba(34,211,238,0.06),transparent_28%),linear-gradient(to_bottom,rgba(3,3,6,0.12),rgba(3,3,6,0.28))]" />
       <div className="flex h-screen overflow-hidden">
         {/* Desktop Sidebar */}
         <motion.aside
           animate={{ width: collapsed ? 64 : 240 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-          className="hidden lg:flex flex-col border-r border-white/[0.06] bg-black/40 backdrop-blur-2xl overflow-hidden flex-shrink-0"
+          transition={{ type: "spring", stiffness: 400, damping: 35 }}
+          className="hidden lg:flex flex-col border-r border-white/[0.05] bg-black/18 backdrop-blur-3xl overflow-hidden flex-shrink-0"
         >
           <SidebarContent
             collapsed={collapsed}
@@ -211,15 +249,15 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+                className="lg:hidden fixed inset-0 bg-black/45 backdrop-blur-sm z-40"
                 onClick={() => setMobileOpen(false)}
               />
               <motion.div
                 initial={{ x: -240 }}
                 animate={{ x: 0 }}
                 exit={{ x: -240 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-                className="lg:hidden fixed left-0 top-0 bottom-0 w-60 flex flex-col bg-black/95 backdrop-blur-2xl z-50 border-r border-white/10"
+                transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                className="lg:hidden fixed left-0 top-0 bottom-0 w-60 flex flex-col bg-black/82 backdrop-blur-3xl z-50 border-r border-white/10"
               >
                 <SidebarContent
                   mobile
@@ -237,7 +275,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         {/* Main */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
-          <header className="h-14 border-b border-white/[0.06] bg-black/30 backdrop-blur-2xl flex items-center justify-between px-4 lg:px-6 flex-shrink-0">
+          <header className="h-14 border-b border-white/[0.05] bg-black/14 backdrop-blur-3xl flex items-center justify-between px-4 lg:px-6 flex-shrink-0">
             <div className="flex items-center gap-3">
               <button
                 className="lg:hidden p-2 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors"
@@ -266,7 +304,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-400" />
                   </span>
                   <span className="text-xs text-indigo-200 font-medium">
-                    Research running{activeAgentName ? ` · ${activeAgentName}` : ''} · {progress}%
+                    Research running
+                    {activeAgentName ? ` · ${activeAgentName}` : ""} ·{" "}
+                    {progress}%
                   </span>
                 </Link>
               )}
@@ -274,7 +314,11 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold cursor-pointer shadow-glow ml-1 overflow-hidden">
                   {user?.picture ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={user.picture} alt={user.name ?? user.email} className="w-full h-full object-cover" />
+                    <img
+                      src={user.picture}
+                      alt={user.name ?? user.email}
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
                     initials
                   )}
@@ -283,7 +327,10 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          <main className="flex-1 overflow-auto p-4 lg:p-6">{children}</main>
+          <main className="flex-1 overflow-auto p-4 lg:p-6 relative">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.06),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(6,182,212,0.05),transparent_26%)]" />
+            <div className="relative">{children}</div>
+          </main>
         </div>
       </div>
     </div>
