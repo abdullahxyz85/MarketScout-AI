@@ -38,5 +38,4 @@ services:
       - /app/node_modules
     depends_on:
       - backend
-      - backend
       - agent-service
