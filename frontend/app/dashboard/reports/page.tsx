@@ -4,39 +4,16 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   FileText, Download, Eye, Share2, Star, BarChart3,
-  TrendingUp, Search, Clock, Heart, Zap, Filter,
+  TrendingUp, Search, Clock, Heart, Zap,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, PieChart, Pie, Cell, LineChart,
-  Line, AreaChart, Area,
+  ResponsiveContainer, PieChart, Pie, Cell,
+  AreaChart, Area,
 } from 'recharts';
 import { GlassCard, GlassCardContent, GlassCardHeader } from '@/components/ui/glass-card';
 import { AnimatedButton } from '@/components/ui/animated-button';
-
-const reports = [
-  { id: 1, title: 'Healthcare AI Market Analysis', description: 'Comprehensive analysis of the AI-powered healthcare market in North America', industry: 'Healthcare', score: 94, date: '2 hours ago', pages: 24, starred: true, icon: Heart, color: 'from-rose-500 to-pink-500', scoreData: [72, 78, 82, 88, 91, 94] },
-  { id: 2, title: 'EdTech Competitive Landscape', description: 'Deep dive into the online education market including 18 competitors', industry: 'EdTech', score: 87, date: '5 hours ago', pages: 18, starred: false, icon: BarChart3, color: 'from-indigo-500 to-purple-500', scoreData: [60, 65, 70, 75, 82, 87] },
-  { id: 3, title: 'FinTech Startup Opportunity', description: 'Market sizing and opportunity assessment for B2B payments startup', industry: 'FinTech', score: 76, date: '1 day ago', pages: 21, starred: true, icon: TrendingUp, color: 'from-emerald-500 to-teal-500', scoreData: [55, 58, 62, 68, 73, 76] },
-  { id: 4, title: 'SaaS Productivity Tools Market', description: 'Analysis of the enterprise productivity SaaS market for 2024', industry: 'SaaS', score: 81, date: '2 days ago', pages: 16, starred: false, icon: Zap, color: 'from-cyan-500 to-blue-500', scoreData: [58, 62, 67, 72, 78, 81] },
-];
-
-const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-
-const industryData = [
-  { name: 'Healthcare', reports: 4, avgScore: 91 },
-  { name: 'FinTech', reports: 3, avgScore: 78 },
-  { name: 'EdTech', reports: 2, avgScore: 85 },
-  { name: 'SaaS', reports: 3, avgScore: 82 },
-];
-
-const pieData = [
-  { name: 'High (90+)', value: 3, color: '#10b981' },
-  { name: 'Good (75-89)', value: 7, color: '#6366f1' },
-  { name: 'Fair (<75)', value: 2, color: '#f59e0b' },
-];
-
-const activityData = months.map((m, i) => ({ month: m, reports: [1, 2, 2, 3, 2, 4][i], avgScore: [72, 76, 79, 83, 85, 87][i] }));
+import { EmptyResearchState } from '@/components/dashboard/empty-research-state';
 
 const scoreColor = (s: number) => s >= 90 ? 'text-emerald-400' : s >= 75 ? 'text-indigo-400' : 'text-yellow-400';
 
@@ -61,43 +38,113 @@ const HISTORY_COLORS = [
   'from-cyan-500 to-blue-500',
 ];
 
+function deriveActivityData(history: HistoryItem[]) {
+  const buckets = new Map<string, { key: string; label: string; reports: number; scoreSum: number }>();
+  for (const h of history) {
+    if (!h.created_at) continue;
+    const date = new Date(h.created_at);
+    const key = `${date.getFullYear()}-${date.getMonth()}`;
+    const label = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    const bucket = buckets.get(key) ?? { key, label, reports: 0, scoreSum: 0 };
+    bucket.reports += 1;
+    bucket.scoreSum += h.innovation_score ?? 0;
+    buckets.set(key, bucket);
+  }
+  return Array.from(buckets.values())
+    .sort((a, b) => a.key.localeCompare(b.key))
+    .map((b) => ({ month: b.label, reports: b.reports, avgScore: Math.round(b.scoreSum / b.reports) }));
+}
+
+function deriveScoreDistribution(history: HistoryItem[]) {
+  let high = 0, good = 0, fair = 0;
+  for (const h of history) {
+    const s = h.innovation_score ?? 0;
+    if (s >= 90) high += 1;
+    else if (s >= 75) good += 1;
+    else fair += 1;
+  }
+  return [
+    { name: 'High (90+)', value: high, color: '#10b981' },
+    { name: 'Good (75-89)', value: good, color: '#6366f1' },
+    { name: 'Fair (<75)', value: fair, color: '#f59e0b' },
+  ].filter((d) => d.value > 0);
+}
+
+function deriveIndustryData(history: HistoryItem[]) {
+  const buckets = new Map<string, { industry: string; reports: number; scoreSum: number }>();
+  for (const h of history) {
+    const industry = h.industry?.trim() || 'General';
+    const bucket = buckets.get(industry) ?? { industry, reports: 0, scoreSum: 0 };
+    bucket.reports += 1;
+    bucket.scoreSum += h.innovation_score ?? 0;
+    buckets.set(industry, bucket);
+  }
+  return Array.from(buckets.values()).map((b) => ({
+    name: b.industry,
+    reports: b.reports,
+    avgScore: Math.round(b.scoreSum / b.reports),
+  }));
+}
+
 export default function ReportsPage() {
   const [search, setSearch] = useState('');
-  const [starred, setStarred] = useState<number[]>([1, 3]);
+  const [starred, setStarred] = useState<string[]>([]);
   const [history, setHistory] = useState<HistoryItem[] | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
         const userRes = await fetch('/api/users/me', { credentials: 'include' });
-        if (!userRes.ok) return;
+        if (!userRes.ok) { setHistory([]); return; }
         const user = await userRes.json();
         const userId = user?.id;
-        if (!userId) return;
+        if (!userId) { setHistory([]); return; }
         const res = await fetch(`/api/agents/research/history/${userId}`);
-        if (!res.ok) return;
+        if (!res.ok) { setHistory([]); return; }
         const data = await res.json();
-        if (Array.isArray(data) && data.length) setHistory(data);
-      } catch { /* keep mock data */ }
+        setHistory(Array.isArray(data?.history) ? data.history : []);
+      } catch {
+        setHistory([]);
+      }
     })();
   }, []);
 
-  const liveReports = history?.map((h, i) => ({
-    id: i + 1,
-    jobId: h.job_id,
+  if (history === null) return null;
+
+  if (history.length === 0) {
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-white mb-0.5">
+              Research <span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">Reports</span>
+            </h1>
+            <p className="text-white/45 text-sm">View, download, and analyse your market intelligence reports</p>
+          </div>
+        </div>
+        <EmptyResearchState
+          title="No reports yet"
+          description="Run a market research analysis to generate your first report — it'll show up here with its score, industry, and a downloadable PDF."
+        />
+      </div>
+    );
+  }
+
+  const reports = history.map((h, i) => ({
+    id: h.job_id,
     title: h.idea ?? 'Untitled Research',
     description: h.industry ? `Industry: ${h.industry}` : '',
     industry: h.industry ?? 'General',
     score: h.innovation_score ?? 0,
     date: h.created_at ? new Date(h.created_at).toLocaleString() : '',
-    pages: 0,
-    starred: false,
     icon: HISTORY_ICONS[i % HISTORY_ICONS.length],
     color: HISTORY_COLORS[i % HISTORY_COLORS.length],
-    scoreData: [h.innovation_score ?? 0, h.innovation_score ?? 0, h.innovation_score ?? 0, h.innovation_score ?? 0, h.innovation_score ?? 0, h.innovation_score ?? 0],
   }));
 
-  const filtered = (liveReports ?? reports).filter((r) => r.title.toLowerCase().includes(search.toLowerCase()));
+  const activityData = deriveActivityData(history);
+  const scoreDistribution = deriveScoreDistribution(history);
+  const industryData = deriveIndustryData(history);
+  const filtered = reports.filter((r) => r.title.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -154,15 +201,15 @@ export default function ReportsPage() {
               <div className="flex-1">
                 <ResponsiveContainer width="100%" height={160}>
                   <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={42} outerRadius={68} paddingAngle={4} dataKey="value" strokeWidth={0}>
-                      {pieData.map((d, i) => <Cell key={i} fill={d.color} opacity={0.85} />)}
+                    <Pie data={scoreDistribution} cx="50%" cy="50%" innerRadius={42} outerRadius={68} paddingAngle={4} dataKey="value" strokeWidth={0}>
+                      {scoreDistribution.map((d, i) => <Cell key={i} fill={d.color} opacity={0.85} />)}
                     </Pie>
                     <Tooltip {...tooltipStyle} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
               <div className="space-y-3 flex-shrink-0">
-                {pieData.map((d) => (
+                {scoreDistribution.map((d) => (
                   <div key={d.name} className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full" style={{ background: d.color }} />
                     <div>
@@ -217,72 +264,48 @@ export default function ReportsPage() {
 
       {/* Reports grid */}
       <div className="grid md:grid-cols-2 gap-4">
-        {filtered.map((r, i) => {
-          const sparkData = months.map((m, idx) => ({ m, v: r.scoreData[idx] }));
-          return (
-            <motion.div key={r.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.09 }}>
-              <GlassCard>
-                <GlassCardContent>
-                  <div className="flex items-start gap-4 mb-4">
-                    <div className={`w-13 h-13 w-[52px] h-[52px] rounded-2xl bg-gradient-to-br ${r.color} flex items-center justify-center flex-shrink-0 shadow-lg`}>
-                      <r.icon className="w-6 h-6 text-white" />
+        {filtered.map((r, i) => (
+          <motion.div key={r.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.09 }}>
+            <GlassCard>
+              <GlassCardContent>
+                <div className="flex items-start gap-4 mb-4">
+                  <div className={`w-[52px] h-[52px] rounded-2xl bg-gradient-to-br ${r.color} flex items-center justify-center flex-shrink-0 shadow-lg`}>
+                    <r.icon className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between">
+                      <h3 className="text-sm font-semibold text-white leading-tight pr-2">{r.title}</h3>
+                      <div className={`text-xl font-bold flex-shrink-0 ${scoreColor(r.score)}`}>{r.score}</div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between">
-                        <h3 className="text-sm font-semibold text-white leading-tight pr-2">{r.title}</h3>
-                        <div className={`text-xl font-bold flex-shrink-0 ${scoreColor(r.score)}`}>{r.score}</div>
-                      </div>
-                      <p className="text-xs text-white/45 mt-1 line-clamp-2">{r.description}</p>
-                      <div className="flex items-center gap-3 text-xs text-white/35 mt-2">
-                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{r.date}</span>
-                        <span>{r.pages}p</span>
-                        <span className="px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08]">{r.industry}</span>
-                      </div>
+                    <p className="text-xs text-white/45 mt-1 line-clamp-2">{r.description}</p>
+                    <div className="flex items-center gap-3 text-xs text-white/35 mt-2">
+                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{r.date}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08]">{r.industry}</span>
                     </div>
                   </div>
+                </div>
 
-                  {/* Sparkline */}
-                  <div className="h-16 mb-3 -mx-1">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={sparkData} margin={{ top: 2, right: 2, bottom: 0, left: 2 }}>
-                        <defs>
-                          <linearGradient id={`sg${r.id}`} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#6366f1" stopOpacity={0.3} />
-                            <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <Area type="monotone" dataKey="v" stroke="#6366f1" strokeWidth={1.5} fill={`url(#sg${r.id})`} dot={false} />
-                        <Tooltip {...tooltipStyle} formatter={(v: number) => [v, 'Score']} />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                <div className="flex items-center justify-between pt-3 border-t border-white/[0.06]">
+                  <div className="flex gap-2">
+                    <motion.button whileHover={{ scale: 1.08 }} className="p-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/50 hover:text-white hover:bg-white/[0.08] transition-colors">
+                      <Eye className="w-3.5 h-3.5" />
+                    </motion.button>
+                    <motion.button whileHover={{ scale: 1.08 }} className="p-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/50 hover:text-white hover:bg-white/[0.08] transition-colors">
+                      <Share2 className="w-3.5 h-3.5" />
+                    </motion.button>
+                    <motion.button whileHover={{ scale: 1.08 }} onClick={() => setStarred(s => s.includes(r.id) ? s.filter(x => x !== r.id) : [...s, r.id])}
+                      className={`p-1.5 rounded-lg border transition-colors ${starred.includes(r.id) ? 'bg-yellow-500/10 border-yellow-500/25 text-yellow-400' : 'bg-white/[0.04] border-white/[0.08] text-white/50 hover:text-white'}`}>
+                      <Star className="w-3.5 h-3.5" fill={starred.includes(r.id) ? 'currentColor' : 'none'} />
+                    </motion.button>
                   </div>
-
-                  <div className="flex items-center justify-between pt-3 border-t border-white/[0.06]">
-                    <div className="flex gap-2">
-                      <motion.button whileHover={{ scale: 1.08 }} className="p-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/50 hover:text-white hover:bg-white/[0.08] transition-colors">
-                        <Eye className="w-3.5 h-3.5" />
-                      </motion.button>
-                      <motion.button whileHover={{ scale: 1.08 }} className="p-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/50 hover:text-white hover:bg-white/[0.08] transition-colors">
-                        <Share2 className="w-3.5 h-3.5" />
-                      </motion.button>
-                      <motion.button whileHover={{ scale: 1.08 }} onClick={() => setStarred(s => s.includes(r.id) ? s.filter(x => x !== r.id) : [...s, r.id])}
-                        className={`p-1.5 rounded-lg border transition-colors ${starred.includes(r.id) ? 'bg-yellow-500/10 border-yellow-500/25 text-yellow-400' : 'bg-white/[0.04] border-white/[0.08] text-white/50 hover:text-white'}`}>
-                        <Star className="w-3.5 h-3.5" fill={starred.includes(r.id) ? 'currentColor' : 'none'} />
-                      </motion.button>
-                    </div>
-                    {(r as any).jobId ? (
-                      <a href={`/api/agents/research/${(r as any).jobId}/report/pdf`} target="_blank" rel="noopener noreferrer">
-                        <AnimatedButton size="sm"><Download className="w-3.5 h-3.5" />Download</AnimatedButton>
-                      </a>
-                    ) : (
-                      <AnimatedButton size="sm"><Download className="w-3.5 h-3.5" />Download</AnimatedButton>
-                    )}
-                  </div>
-                </GlassCardContent>
-              </GlassCard>
-            </motion.div>
-          );
-        })}
+                  <a href={`/api/agents/research/${r.id}/report/pdf`} target="_blank" rel="noopener noreferrer">
+                    <AnimatedButton size="sm"><Download className="w-3.5 h-3.5" />Download</AnimatedButton>
+                  </a>
+                </div>
+              </GlassCardContent>
+            </GlassCard>
+          </motion.div>
+        ))}
       </div>
     </div>
   );

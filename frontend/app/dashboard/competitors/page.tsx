@@ -2,44 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Building2, Target, TrendingUp, ShieldAlert } from "lucide-react";
+import { Building2, Target, ShieldAlert } from "lucide-react";
 import {
   GlassCard,
   GlassCardContent,
   GlassCardHeader,
 } from "@/components/ui/glass-card";
+import { EmptyResearchState } from "@/components/dashboard/empty-research-state";
 import { loadLastResearch } from "@/lib/research-store";
 
-const MOCK_COMPETITORS = [
-  {
-    name: "TechCorp AI",
-    segment: "Enterprise Analytics",
-    threat: "High",
-    marketShare: "28%",
-  },
-  {
-    name: "DataGenius",
-    segment: "SMB Intelligence",
-    threat: "Medium",
-    marketShare: "22%",
-  },
-  {
-    name: "InsightLab",
-    segment: "Healthcare Insights",
-    threat: "Low",
-    marketShare: "15%",
-  },
-  {
-    name: "MarketMind",
-    segment: "General Market Research",
-    threat: "Medium",
-    marketShare: "12%",
-  },
-];
+interface Competitor {
+  name: string;
+  segment: string;
+  threat: string;
+  marketShare: string;
+}
 
 export default function CompetitorsPage() {
-  const [competitors, setCompetitors] = useState(MOCK_COMPETITORS);
-  const [live, setLive] = useState(false);
+  const [competitors, setCompetitors] = useState<Competitor[] | null>(null);
 
   useEffect(() => {
     const stored = loadLastResearch();
@@ -53,9 +33,45 @@ export default function CompetitorsPage() {
           marketShare: c.market_share ?? "0%",
         }))
       );
-      setLive(true);
+    } else {
+      setCompetitors([]);
     }
   }, []);
+
+  if (competitors === null) return null;
+
+  if (competitors.length === 0) {
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto">
+        <div>
+          <h1 className="text-2xl font-bold text-white mb-1">
+            Competitor{" "}
+            <span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+              Landscape
+            </span>
+          </h1>
+          <p className="text-white/45 text-sm">
+            Track competitors, market share, and strategic threat levels.
+          </p>
+        </div>
+        <EmptyResearchState
+          title="No research yet"
+          description="Run a market research analysis to see the competitors it found, their market share, and threat levels."
+        />
+      </div>
+    );
+  }
+
+  const highThreatCount = competitors.filter((c) => c.threat.toLowerCase() === "high").length;
+  const topShare = Math.max(
+    ...competitors.map((c) => parseFloat(c.marketShare.replace("%", "")) || 0)
+  );
+
+  const kpis = [
+    { label: "Competitors Tracked", value: String(competitors.length), icon: Building2 },
+    { label: "High Threat", value: String(highThreatCount), icon: ShieldAlert },
+    { label: "Top Share", value: `${topShare}%`, icon: Target },
+  ];
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -71,13 +87,8 @@ export default function CompetitorsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: "Competitors Tracked", value: "24", icon: Building2 },
-          { label: "High Threat", value: "3", icon: ShieldAlert },
-          { label: "Top Share", value: "28%", icon: Target },
-          { label: "Monthly Movement", value: "+4.2%", icon: TrendingUp },
-        ].map((metric, i) => (
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {kpis.map((metric, i) => (
           <motion.div
             key={metric.label}
             initial={{ opacity: 0, y: 12 }}
@@ -88,7 +99,6 @@ export default function CompetitorsPage() {
               <GlassCardContent>
                 <div className="flex items-center justify-between mb-2">
                   <metric.icon className="w-5 h-5 text-indigo-300" />
-                  <span className="text-xs text-white/40">Live</span>
                 </div>
                 <div className="text-xl font-bold text-white">
                   {metric.value}

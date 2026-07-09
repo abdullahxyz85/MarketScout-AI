@@ -55,7 +55,7 @@ function SidebarContent({
     <>
       <div className={cn(
         'flex items-center border-b border-white/10 transition-all duration-300',
-        mobile ? 'p-4 gap-3' : collapsed ? 'p-4 justify-center' : 'p-4 gap-2'
+        mobile ? 'p-4 gap-3' : collapsed ? 'p-4 justify-center' : 'p-4 justify-between'
       )}>
         {(!collapsed || mobile) && (
           <Link href="/" className="min-w-0">
