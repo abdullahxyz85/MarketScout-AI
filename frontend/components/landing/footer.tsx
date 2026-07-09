@@ -2,7 +2,8 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Sparkles, Github, Linkedin, Twitter, Mail } from 'lucide-react';
+import { Github, Linkedin, Twitter, Mail } from 'lucide-react';
+import { Logo } from '@/components/ui/logo';
 
 const footerLinks = {
   Product: ['Features', 'Pricing', 'Dashboard', 'API'],
@@ -17,13 +18,8 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
           <div className="col-span-2">
-            <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-cyan-500 flex items-center justify-center shadow-glow">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-white">
-                MarketScout <span className="text-gradient">AI</span>
-              </span>
+            <Link href="/" className="mb-4">
+              <Logo size={32} />
             </Link>
             <p className="text-sm text-white/50 mb-6 max-w-xs">
               Autonomous AI agents transforming startup ideas into actionable market intelligence.

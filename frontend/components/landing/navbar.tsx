@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Sparkles, LogOut } from 'lucide-react';
+import { Menu, X, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { AnimatedButton } from '@/components/ui/animated-button';
+import { Logo } from '@/components/ui/logo';
 import { cn } from '@/lib/utils';
 
 const navLinks = [
@@ -70,18 +71,8 @@ export function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <motion.div
-            className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-600 to-cyan-500 flex items-center justify-center"
-            whileHover={{ scale: 1.08 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Sparkles className="w-4 h-4 text-white" />
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-600 to-cyan-500 opacity-40 blur-md -z-10" />
-          </motion.div>
-          <span className="text-lg font-bold text-white tracking-tight">
-            MarketScout <span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">AI</span>
-          </span>
+        <Link href="/" className="group">
+          <Logo size={28} />
         </Link>
 
         {/* Desktop Nav */}
