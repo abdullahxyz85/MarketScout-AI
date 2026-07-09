@@ -8,6 +8,8 @@ type LogoProps = {
 
 export function Logo({ variant = "full", className, size = 32 }: LogoProps) {
   const padding = Math.max(4, Math.round(size * 0.2));
+  const wordmarkSize = Math.round(size * 0.75);
+  const badgeSize = Math.max(9, Math.round(size * 0.34));
 
   const mark = (
     <span
@@ -39,14 +41,21 @@ export function Logo({ variant = "full", className, size = 32 }: LogoProps) {
   }
 
   return (
-    <span className={cn("inline-flex items-center gap-2 text-slate-900 dark:text-white", className)}>
-      <span className="inline-flex items-center gap-0">
+    <span className={cn("inline-flex items-center gap-0.5 min-w-0 text-slate-900 dark:text-white", className)}>
+      <span className="inline-flex items-center gap-0 min-w-0">
         {mark}
-        <span data-slot="wordmark" className="inline-flex items-center gap-0.5 -ml-1.5 text-2xl tracking-tight font-normal">
+        <span
+          data-slot="wordmark"
+          className="inline-block -ml-1 min-w-0 truncate tracking-tight font-normal"
+          style={{ fontSize: wordmarkSize }}
+        >
           Market<span className="font-extrabold">Scout</span>
         </span>
       </span>
-      <span className="text-[11px] font-semibold leading-none tracking-normal px-1.5 py-1 rounded-md border border-slate-900/20 dark:border-white/50 text-slate-900/70 dark:text-white/80">
+      <span
+        className="flex-shrink-0 font-semibold leading-none tracking-normal px-1.5 py-1 rounded-md border border-slate-900/20 dark:border-white/50 text-slate-900/70 dark:text-white/80"
+        style={{ fontSize: badgeSize }}
+      >
           AI
       </span>
     </span>
