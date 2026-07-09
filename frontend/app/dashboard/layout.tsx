@@ -15,6 +15,8 @@ import {
   ChevronRight,
   Menu,
   X,
+  Sliders,
+  GitCompare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/ui/logo';
@@ -22,11 +24,13 @@ import { AnimatedBackground } from '@/components/landing/animated-background';
 import { ResearchProvider, useResearch } from '@/lib/research-context';
 
 const sidebarItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-  { icon: Search, label: 'New Research', href: '/dashboard/research' },
-  { icon: Users, label: 'Competitors', href: '/dashboard/competitors' },
-  { icon: FileText, label: 'Reports', href: '/dashboard/reports' },
-  { icon: Settings, label: 'Settings', href: '/dashboard/settings' },
+  { icon: LayoutDashboard, label: 'Dashboard',    href: '/dashboard' },
+  { icon: Search,          label: 'New Research', href: '/dashboard/research' },
+  { icon: Users,           label: 'Competitors',  href: '/dashboard/competitors' },
+  { icon: FileText,        label: 'Reports',      href: '/dashboard/reports' },
+  { icon: Sliders,         label: 'Scenarios',    href: '/dashboard/scenarios' },
+  { icon: GitCompare,      label: 'Compare',      href: '/dashboard/compare' },
+  { icon: Settings,        label: 'Settings',     href: '/dashboard/settings' },
 ];
 
 type CurrentUser = {

@@ -13,6 +13,7 @@ from fastapi.responses import Response, StreamingResponse
 from orchestrator.pipeline import cleanup_queue, get_queue, register_queue, run_pipeline
 from schemas.models import JobResponse, JobStatus, ResearchRequest, ScenarioRequest
 from services import memory_service, report_generator
+from services.compare_service import compare_competitors, compare_ideas
 
 logger = logging.getLogger("agent-service.router")
 
@@ -260,3 +261,51 @@ async def get_user_history(user_id: str):
     """Return the research history for a given user from persistent storage."""
     history = await memory_service.get_user_research_history(user_id=user_id)
     return {"history": history}
+
+
+@router.get("/compare/ideas", tags=["compare"])
+async def compare_two_ideas(
+    job_id_a: str,
+    job_id_b: str,
+    label_a: str = "Idea A",
+    label_b: str = "Idea B",
+):
+    """
+    Compare two completed research jobs side-by-side across all key dimensions.
+    Returns per-dimension scores, deltas, winners, and an overall recommendation.
+    """
+    async def _get_result(job_id: str) -> Dict[str, Any]:
+        job = _jobs.get(job_id)
+        if job and job.get("result"):
+            return job["result"]
+        result = await memory_service.get_research_result(job_id)
+        if result:
+            return result
+        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found")
+
+    state_a, state_b = await asyncio.gather(_get_result(job_id_a), _get_result(job_id_b))
+    return compare_ideas(state_a, state_b, label_a=label_a, label_b=label_b)
+
+
+@router.get("/compare/competitors", tags=["compare"])
+async def compare_two_competitors(
+    job_id_a: str,
+    job_id_b: str,
+    label_a: str = "Idea A",
+    label_b: str = "Idea B",
+):
+    """
+    Compare the competitive landscapes of two completed research jobs.
+    Returns side-by-side competitor lists, saturation scores, and a verdict.
+    """
+    async def _get_result(job_id: str) -> Dict[str, Any]:
+        job = _jobs.get(job_id)
+        if job and job.get("result"):
+            return job["result"]
+        result = await memory_service.get_research_result(job_id)
+        if result:
+            return result
+        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found")
+
+    state_a, state_b = await asyncio.gather(_get_result(job_id_a), _get_result(job_id_b))
+    return compare_competitors(state_a, state_b, label_a=label_a, label_b=label_b)
