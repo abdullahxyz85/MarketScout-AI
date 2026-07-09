@@ -1,10 +1,6 @@
 {
   "compilerOptions": {
-<<<<<<< HEAD
     "target": "es2022",
-=======
-    "target": "es5",
->>>>>>> add-ai-agent-service
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
