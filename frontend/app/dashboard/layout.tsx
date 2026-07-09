@@ -13,8 +13,6 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Bell,
-  Moon,
   Menu,
   X,
 } from 'lucide-react';
@@ -57,7 +55,7 @@ function SidebarContent({
     <>
       <div className={cn(
         'flex items-center border-b border-white/10 transition-all duration-300',
-        mobile ? 'p-4 gap-3' : collapsed ? 'p-4 justify-center' : 'p-4 gap-3 justify-between'
+        mobile ? 'p-4 gap-3' : collapsed ? 'p-4 justify-center' : 'p-4 gap-2'
       )}>
         {(!collapsed || mobile) && (
           <Link href="/" className="min-w-0">
@@ -72,7 +70,7 @@ function SidebarContent({
         {!mobile && (
           <button
             onClick={onToggleCollapsed}
-            className="p-1.5 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors flex-shrink-0"
+            className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors flex-shrink-0"
           >
             {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </button>
@@ -269,21 +267,14 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 </Link>
               )}
               <div className="flex items-center gap-1.5">
-              <button className="p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors">
-                <Moon className="w-4 h-4" />
-              </button>
-              <button className="relative p-2 rounded-lg hover:bg-white/5 text-white/40 hover:text-white transition-colors">
-                <Bell className="w-4 h-4" />
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-indigo-500" />
-              </button>
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold cursor-pointer shadow-glow ml-1 overflow-hidden">
-                {user?.picture ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.picture} alt={user.name ?? user.email} className="w-full h-full object-cover" />
-                ) : (
-                  initials
-                )}
-              </div>
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold cursor-pointer shadow-glow ml-1 overflow-hidden">
+                  {user?.picture ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={user.picture} alt={user.name ?? user.email} className="w-full h-full object-cover" />
+                  ) : (
+                    initials
+                  )}
+                </div>
               </div>
             </div>
           </header>

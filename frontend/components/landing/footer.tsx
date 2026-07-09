@@ -1,15 +1,10 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Github, Linkedin, Twitter, Mail } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 
 const footerLinks = {
   Product: ['Features', 'Pricing', 'Dashboard', 'API'],
-  Resources: ['Documentation', 'Tutorials', 'Blog', 'Case Studies'],
-  Company: ['About', 'Careers', 'Contact', 'Press'],
-  Legal: ['Privacy', 'Terms', 'Security', 'Cookies'],
 };
 
 export function Footer() {
@@ -24,30 +19,6 @@ export function Footer() {
             <p className="text-sm text-white/50 mb-6 max-w-xs">
               Autonomous AI agents transforming startup ideas into actionable market intelligence.
             </p>
-
-            <div className="flex gap-4">
-              <motion.a
-                href="#"
-                whileHover={{ scale: 1.1 }}
-                className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
-              >
-                <Twitter className="w-5 h-5" />
-              </motion.a>
-              <motion.a
-                href="#"
-                whileHover={{ scale: 1.1 }}
-                className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
-              >
-                <Github className="w-5 h-5" />
-              </motion.a>
-              <motion.a
-                href="#"
-                whileHover={{ scale: 1.1 }}
-                className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
-              >
-                <Linkedin className="w-5 h-5" />
-              </motion.a>
-            </div>
           </div>
 
           {Object.entries(footerLinks).map(([category, links]) => (
@@ -67,31 +38,10 @@ export function Footer() {
               </ul>
             </div>
           ))}
-        </div>
 
-        <div className="mt-12 pt-8 border-t border-white/10">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-white/40">
-              2024 MarketScout AI. All rights reserved.
-            </p>
-
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:border-indigo-500/50 transition-colors"
-                />
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm font-medium"
-                >
-                  Subscribe
-                </motion.button>
-              </div>
-            </div>
-          </div>
+          <p className="col-span-2 md:col-span-1 lg:col-span-3 self-center text-right text-sm text-white/40 whitespace-nowrap">
+            2026 MarketScout AI. All rights reserved.
+          </p>
         </div>
       </div>
     </footer>
