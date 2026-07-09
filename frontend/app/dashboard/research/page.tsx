@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search, Sparkles, ArrowRight, Zap, BarChart3, Users, TrendingUp,
-  Target, ShieldAlert, FileText, Lightbulb, Clock, BookOpen, Shield,
-  DollarSign, Star, CheckCircle, Compass, Activity, AlertCircle,
+  Sparkles, ArrowRight, Zap, BarChart3,
+  Target, ShieldAlert, FileText, Lightbulb, Clock,
+  Compass, Activity, AlertCircle,
   Download, RefreshCw,
 } from 'lucide-react';
 import { GlassCard, GlassCardContent, GlassCardHeader } from '@/components/ui/glass-card';
@@ -14,6 +14,7 @@ import { AnimatedButton } from '@/components/ui/animated-button';
 import { StatusBadge } from '@/components/ui/animated-badge';
 import { AnimatedProgress } from '@/components/ui/animated-progress';
 import { useResearch } from '@/lib/research-context';
+import { AGENT_SEQUENCE as AGENTS } from '@/lib/agents';
 
 const industries = [
   'Healthcare',
@@ -24,23 +25,6 @@ const industries = [
   'AI/ML',
   'CleanTech',
   'Logistics',
-];
-
-const AGENTS = [
-  { name: 'Research Agent',            icon: Search,      color: 'from-indigo-500 to-purple-500' },
-  { name: 'Competitor Agent',          icon: Users,       color: 'from-purple-500 to-pink-500' },
-  { name: 'Scientific Research Agent', icon: BookOpen,    color: 'from-blue-500 to-cyan-500' },
-  { name: 'Patent Intelligence Agent', icon: Shield,      color: 'from-amber-500 to-yellow-500' },
-  { name: 'Funding Agent',             icon: DollarSign,  color: 'from-green-500 to-emerald-500' },
-  { name: 'Trend Agent',               icon: TrendingUp,  color: 'from-emerald-500 to-teal-500' },
-  { name: 'Research Gap Agent',        icon: Lightbulb,   color: 'from-yellow-500 to-orange-500' },
-  { name: 'SWOT Agent',                icon: Target,      color: 'from-orange-500 to-red-500' },
-  { name: 'Opportunity Agent',         icon: Star,        color: 'from-violet-500 to-purple-500' },
-  { name: 'Risk Agent',                icon: ShieldAlert, color: 'from-red-500 to-rose-500' },
-  { name: 'Innovation Scoring Agent',  icon: BarChart3,   color: 'from-cyan-500 to-blue-500' },
-  { name: 'Validation Agent',          icon: CheckCircle, color: 'from-teal-500 to-green-500' },
-  { name: 'Strategy Agent',            icon: Compass,     color: 'from-indigo-500 to-violet-500' },
-  { name: 'Report Generator',          icon: FileText,    color: 'from-indigo-500 to-blue-500' },
 ];
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false });
@@ -74,18 +58,23 @@ export default function ResearchPage() {
   // bounding box; inside a flex/grid layout that box can read 0 on the very
   // first paint, leaving the graph invisible. Measuring explicitly and
   // passing width/height as props avoids relying on its own auto-sizing.
-  const graphContainerRef = useRef<HTMLDivElement>(null);
+  // A callback ref (rather than useRef + useEffect keyed on `stage`) is required
+  // here because this container only mounts once AnimatePresence's exit
+  // animation for the previous stage finishes — a `stage`-keyed effect fires
+  // before that mount happens and would find the ref still null.
+  const graphObserverRef = useRef<ResizeObserver | null>(null);
   const [graphSize, setGraphSize] = useState({ width: 0, height: 500 });
 
-  useEffect(() => {
-    const el = graphContainerRef.current;
+  const graphContainerRef = useCallback((el: HTMLDivElement | null) => {
+    graphObserverRef.current?.disconnect();
+    graphObserverRef.current = null;
     if (!el) return;
     const updateSize = () => setGraphSize({ width: el.clientWidth, height: 500 });
     updateSize();
     const observer = new ResizeObserver(updateSize);
     observer.observe(el);
-    return () => observer.disconnect();
-  }, [stage]);
+    graphObserverRef.current = observer;
+  }, []);
 
   const runScenario = async () => {
     if (!jobId) return;
@@ -166,9 +155,11 @@ export default function ResearchPage() {
                     className={`w-10 h-5 rounded-full transition-colors relative flex-shrink-0 ${
                       healthcareMode ? 'bg-indigo-500' : 'bg-white/20'
                     }`}>
-                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-                      healthcareMode ? 'translate-x-5' : 'translate-x-0.5'
-                    }`} />
+                    <motion.div
+                      animate={{ x: healthcareMode ? 22 : 2 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                      className="absolute top-0.5 w-4 h-4 rounded-full bg-white"
+                    />
                   </button>
                   <span className="text-sm text-white/60">Healthcare Mode <span className="text-white/30">(FDA · clinical · payer analysis)</span></span>
                 </div>
@@ -327,11 +318,11 @@ export default function ResearchPage() {
                 <GlassCard>
                   <GlassCardHeader><div className="flex items-center gap-2"><BarChart3 className="w-5 h-5 text-cyan-400" /><h3 className="text-base font-semibold text-white">Key Metrics</h3></div></GlassCardHeader>
                   <GlassCardContent>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {Object.entries(result.report.key_metrics).map(([k, v]) => (
-                        <div key={k} className="flex justify-between text-sm border-b border-white/5 pb-2">
-                          <span className="text-white/50 capitalize">{k.replace(/_/g, ' ')}</span>
-                          <span className="text-white font-medium">{v as string}</span>
+                        <div key={k} className="flex gap-4 text-sm border-b border-white/5 pb-2">
+                          <span className="text-white/50 capitalize w-28 flex-shrink-0">{k.replace(/_/g, ' ')}</span>
+                          <span className="text-white font-medium flex-1">{v as string}</span>
                         </div>
                       ))}
                     </div>
