@@ -54,6 +54,30 @@ async def _pipeline_task(
             healthcare_mode=request.healthcare_mode,
         )
 
+        # ── Idea Guard check ─────────────────────────────────────────────────
+        idea_guard = final_state.get("idea_guard") or {}
+        verdict = idea_guard.get("verdict", "approved")
+
+        if verdict in ("rejected", "needs_clarification"):
+            # Pipeline was short-circuited — surface the guard's feedback.
+            _jobs[job_id]["status"] = JobStatus.FAILED
+            _jobs[job_id]["result"] = dict(final_state)
+            logger.warning(
+                "job %s: idea guard %s — %s",
+                job_id, verdict, idea_guard.get("verdict_summary", ""),
+            )
+            await queue.put({
+                "progress": 0,
+                "current_agent": "Idea Guard",
+                "status": verdict,
+                "done": True,
+                "idea_guard_verdict": verdict,
+                "idea_guard": idea_guard,
+                "error": idea_guard.get("verdict_summary", "Idea rejected by Idea Guard."),
+            })
+            return
+        # ─────────────────────────────────────────────────────────────────────
+
         _jobs[job_id]["status"] = JobStatus.COMPLETED
         _jobs[job_id]["result"] = dict(final_state)
 

@@ -11,6 +11,7 @@ logger = logging.getLogger("agent-service.pipeline")
 
 import agents.competitor_agent as competitor_agent
 import agents.funding_agent as funding_agent
+import agents.idea_guard_agent as idea_guard_agent
 import agents.innovation_scoring_agent as innovation_scoring_agent
 import agents.opportunity_agent as opportunity_agent
 import agents.patent_agent as patent_agent
@@ -28,20 +29,21 @@ from schemas.state import ResearchState
 # Single source of truth for pipeline order — progress is derived from a step's
 # real position in this list (index / total), never a hand-picked percentage.
 AGENT_SEQUENCE = [
-    "Research Agent",
-    "Competitor Agent",
-    "Scientific Research Agent",
-    "Patent Intelligence Agent",
-    "Funding Agent",
-    "Trend Agent",
-    "Research Gap Agent",
-    "SWOT Agent",
-    "Opportunity Agent",
-    "Risk Agent",
-    "Innovation Scoring Agent",
-    "Validation Agent",
-    "Strategy Agent",
-    "Report Generator",
+    "Idea Guard",          # idx 0  — gate: rejects invalid/illegal/vague ideas
+    "Research Agent",      # idx 1
+    "Competitor Agent",    # idx 2
+    "Scientific Research Agent",  # idx 3
+    "Patent Intelligence Agent",  # idx 4
+    "Funding Agent",       # idx 5
+    "Trend Agent",         # idx 6
+    "Research Gap Agent",  # idx 7
+    "SWOT Agent",          # idx 8
+    "Opportunity Agent",   # idx 9
+    "Risk Agent",          # idx 10
+    "Innovation Scoring Agent",   # idx 11
+    "Validation Agent",    # idx 12
+    "Strategy Agent",      # idx 13
+    "Report Generator",    # idx 14
 ]
 _TOTAL_STEPS = len(AGENT_SEQUENCE)
 
@@ -120,8 +122,31 @@ async def _run_step(
 # Each node: pushes running event → calls agent → updates state → pushes completed event
 # ─────────────────────────────────────────────
 
-async def _research_node(state: ResearchState) -> dict:
+async def _idea_guard_node(state: ResearchState) -> dict:
+    """Step 0 — gate agent.  If the idea is rejected the pipeline routes to END."""
     idx = 0
+    job_id = state["job_id"]
+    errors = list(state.get("errors", []))
+    result, progress = await _run_step(
+        job_id, idx, errors, "IdeaGuardAgent",
+        idea_guard_agent.run(state["idea"], state["industry"]),
+    )
+    verdict = result.get("verdict", "approved")
+    next_agent = _next_agent_name(idx) if verdict == "approved" else "Blocked"
+    return {"idea_guard": result, "progress": progress, "current_agent": next_agent, "errors": errors}
+
+
+def _idea_guard_route(state: ResearchState) -> str:
+    """Conditional edge after Idea Guard: continue or short-circuit to END."""
+    verdict = (state.get("idea_guard") or {}).get("verdict", "approved")
+    if verdict == "approved":
+        return "research"
+    # For 'rejected' and 'needs_clarification' we stop the pipeline here.
+    return END
+
+
+async def _research_node(state: ResearchState) -> dict:
+    idx = 1
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -132,7 +157,7 @@ async def _research_node(state: ResearchState) -> dict:
 
 
 async def _competitor_node(state: ResearchState) -> dict:
-    idx = 1
+    idx = 2
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -143,7 +168,7 @@ async def _competitor_node(state: ResearchState) -> dict:
 
 
 async def _scientific_node(state: ResearchState) -> dict:
-    idx = 2
+    idx = 3
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -154,7 +179,7 @@ async def _scientific_node(state: ResearchState) -> dict:
 
 
 async def _patent_node(state: ResearchState) -> dict:
-    idx = 3
+    idx = 4
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -165,7 +190,7 @@ async def _patent_node(state: ResearchState) -> dict:
 
 
 async def _funding_node(state: ResearchState) -> dict:
-    idx = 4
+    idx = 5
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -176,7 +201,7 @@ async def _funding_node(state: ResearchState) -> dict:
 
 
 async def _trend_node(state: ResearchState) -> dict:
-    idx = 5
+    idx = 6
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -187,7 +212,7 @@ async def _trend_node(state: ResearchState) -> dict:
 
 
 async def _research_gap_node(state: ResearchState) -> dict:
-    idx = 6
+    idx = 7
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -204,7 +229,7 @@ async def _research_gap_node(state: ResearchState) -> dict:
 
 
 async def _swot_node(state: ResearchState) -> dict:
-    idx = 7
+    idx = 8
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -223,7 +248,7 @@ async def _swot_node(state: ResearchState) -> dict:
 
 
 async def _opportunity_node(state: ResearchState) -> dict:
-    idx = 8
+    idx = 9
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -242,7 +267,7 @@ async def _opportunity_node(state: ResearchState) -> dict:
 
 
 async def _risk_node(state: ResearchState) -> dict:
-    idx = 9
+    idx = 10
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -260,7 +285,7 @@ async def _risk_node(state: ResearchState) -> dict:
 
 
 async def _innovation_scoring_node(state: ResearchState) -> dict:
-    idx = 10
+    idx = 11
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -271,7 +296,7 @@ async def _innovation_scoring_node(state: ResearchState) -> dict:
 
 
 async def _validation_node(state: ResearchState) -> dict:
-    idx = 11
+    idx = 12
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -290,7 +315,7 @@ async def _validation_node(state: ResearchState) -> dict:
 
 
 async def _strategy_node(state: ResearchState) -> dict:
-    idx = 12
+    idx = 13
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -312,7 +337,7 @@ async def _strategy_node(state: ResearchState) -> dict:
 
 
 async def _report_node(state: ResearchState) -> dict:
-    idx = 13
+    idx = 14
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -343,6 +368,7 @@ def _build_pipeline():
     """Assemble and compile the LangGraph multi-agent pipeline."""
     graph = StateGraph(ResearchState)
 
+    graph.add_node("idea_guard", _idea_guard_node)
     graph.add_node("research", _research_node)
     graph.add_node("competitor", _competitor_node)
     graph.add_node("scientific", _scientific_node)
@@ -358,7 +384,9 @@ def _build_pipeline():
     graph.add_node("strategy", _strategy_node)
     graph.add_node("report", _report_node)
 
-    graph.set_entry_point("research")
+    graph.set_entry_point("idea_guard")
+    # Conditional routing: approved → research pipeline; rejected/needs_clarification → END
+    graph.add_conditional_edges("idea_guard", _idea_guard_route, {"research": "research", END: END})
     graph.add_edge("research", "competitor")
     graph.add_edge("competitor", "scientific")
     graph.add_edge("scientific", "patent")
@@ -400,8 +428,9 @@ async def run_pipeline(
         "industry": industry,
         "healthcare_mode": healthcare_mode,
         "progress": 0,
-        "current_agent": "Research Agent",
+        "current_agent": "Idea Guard",
         "errors": [],
+        "idea_guard": None,
         "research": None,
         "competitors": None,
         "scientific": None,

@@ -12,8 +12,16 @@ from orchestrator.pipeline import (
 )
 
 
-def test_agent_sequence_has_fourteen_agents():
-    assert len(AGENT_SEQUENCE) == 14
+def test_agent_sequence_has_fifteen_agents():
+    assert len(AGENT_SEQUENCE) == 15
+
+
+def test_idea_guard_is_first_agent():
+    assert AGENT_SEQUENCE[0] == "Idea Guard"
+
+
+def test_research_agent_is_second():
+    assert AGENT_SEQUENCE[1] == "Research Agent"
 
 
 def test_progress_before_first_step_is_zero():
@@ -36,8 +44,12 @@ def test_progress_after_matches_next_before():
         assert _progress_after(i) == _progress_before(i + 1)
 
 
+def test_next_agent_name_after_idea_guard_is_research_agent():
+    assert _next_agent_name(0) == "Research Agent"
+
+
 def test_next_agent_name_returns_following_agent():
-    assert _next_agent_name(0) == AGENT_SEQUENCE[1]
+    assert _next_agent_name(1) == AGENT_SEQUENCE[2]
 
 
 def test_next_agent_name_returns_complete_on_last_step():
