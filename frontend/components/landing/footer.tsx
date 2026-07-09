@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Logo } from "@/components/ui/logo";
 
-const footerLinks = {};
+const footerLinks: Record<string, string[]> = {};
 
 export function Footer() {
   return (
