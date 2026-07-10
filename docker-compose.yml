@@ -1,3 +1,9 @@
+# Development Docker Compose
+# Mounts source code for hot-reload.
+# Usage: docker compose up --build
+#
+# For production, use:  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
 services:
   backend:
     build:
@@ -10,6 +16,15 @@ services:
     volumes:
       - ./backend:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - marketscout
+    restart: on-failure
 
   agent-service:
     build:
@@ -23,7 +38,17 @@ services:
       - ./agent-service:/app
     command: uvicorn main:app --host 0.0.0.0 --port 8001 --reload
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - marketscout
+    restart: on-failure
 
   frontend:
     build:
@@ -31,11 +56,21 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5000:5000"
-    # env_file:
-    #   - ./frontend/.env
+    env_file:
+      - ./frontend/.env.local
     volumes:
       - ./frontend:/app
       - /app/node_modules
+      - /app/.next
     depends_on:
-      - backend
-      - agent-service
+      backend:
+        condition: service_healthy
+      agent-service:
+        condition: service_healthy
+    networks:
+      - marketscout
+    restart: on-failure
+
+networks:
+  marketscout:
+    driver: bridge

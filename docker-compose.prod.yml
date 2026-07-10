@@ -1,0 +1,23 @@
+# Production Docker Compose overrides
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# This file overrides the dev settings:
+#   - Removes source-code volume mounts (use built images)
+#   - Removes --reload flags
+#   - Sets restart: always for automatic recovery
+#   - Frontend runs the production Next.js build
+
+services:
+  backend:
+    volumes: []          # No source mount in production
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+    restart: always
+
+  agent-service:
+    volumes: []          # No source mount in production
+    command: uvicorn main:app --host 0.0.0.0 --port 8001 --workers 2
+    restart: always
+
+  frontend:
+    volumes: []          # No source mount — uses the image built by Dockerfile
+    restart: always
