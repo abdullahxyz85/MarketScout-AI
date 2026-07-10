@@ -31,7 +31,7 @@ export default function HealthcareModePage() {
 
   if (!liveData) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="space-y-8 max-w-7xl mx-auto">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">
             Healthcare{" "}
@@ -53,7 +53,7 @@ export default function HealthcareModePage() {
 
   if (liveData.healthcare_mode !== true) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="space-y-8 max-w-7xl mx-auto">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">
             Healthcare{" "}
@@ -86,7 +86,7 @@ export default function HealthcareModePage() {
   ];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-8 max-w-7xl mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">
@@ -226,7 +226,15 @@ export default function HealthcareModePage() {
                     {c.description}
                   </div>
                 </div>
-                <span className="text-xs px-2.5 py-1 rounded-full border border-white/15 text-white/75 capitalize">
+                <span
+                  className={`text-xs px-2.5 py-1 rounded-full border capitalize ${
+                    (c.threat_level ?? "low").toLowerCase() === "high"
+                      ? "border-red-500/30 bg-red-500/10 text-red-400"
+                      : (c.threat_level ?? "low").toLowerCase() === "medium"
+                        ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-400"
+                        : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                  }`}
+                >
                   Threat: {c.threat_level ?? "low"}
                 </span>
               </motion.div>
