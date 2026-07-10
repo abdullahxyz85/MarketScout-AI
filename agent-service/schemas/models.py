@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 
 class ResearchRequest(BaseModel):
-    idea: str = Field(..., min_length=10, max_length=1000, description="The startup idea to research")
+    idea: str = Field(..., min_length=10, max_length=4000, description="The startup idea to research")
     industry: str = Field(default="", description="Target industry vertical")
     healthcare_mode: bool = Field(default=False, description="Enable healthcare-specific research mode")
     user_id: Optional[str] = Field(default=None, description="Optional user ID for persistent memory")

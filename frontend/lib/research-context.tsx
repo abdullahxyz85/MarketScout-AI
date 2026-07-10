@@ -55,6 +55,10 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
 
   const startResearch = useCallback(async (agentNames: string[]) => {
     if (!idea.trim()) return;
+    if (idea.trim().length < 10) {
+      setError('Please describe your idea in at least 10 characters.');
+      return;
+    }
     // Close any previous stream still open
     evtSourceRef.current?.close();
     setStage('running');

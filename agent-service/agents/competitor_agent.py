@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import ANTI_HALLUCINATION_SUFFIX, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_for_search, truncate_sources
 
 _SYSTEM = (
     "You are a competitive intelligence analyst. Given web data, identify and analyze "
@@ -25,13 +25,14 @@ async def run(idea: str, industry: str, healthcare_mode: bool = False) -> Dict[s
     Competitor Agent: searches for competitors in the market and produces a structured
     competitive landscape analysis with threat levels and market share estimates.
     """
+    search_idea = truncate_for_search(idea)
     queries = [
-        f"{idea} {industry} top competitors startups companies",
-        f"best companies {industry} {idea} comparison market share",
-        f"{idea} alternative solutions competitive analysis",
+        f"{search_idea} {industry} top competitors startups companies",
+        f"best companies {industry} {search_idea} comparison market share",
+        f"{search_idea} alternative solutions competitive analysis",
     ]
     if healthcare_mode:
-        queries.append(f"{idea} healthcare competitors hospitals pharma digital health companies")
+        queries.append(f"{search_idea} healthcare competitors hospitals pharma digital health companies")
 
     raw_results = await asyncio.gather(
         *[search(q, max_results=4) for q in queries[:4]],
@@ -73,7 +74,7 @@ Return a JSON object with exactly this structure:
   "unsupported_claims": ["list of field names not found in sources, or empty array"]
 }}
 Include 3 to 6 competitors. market_saturation_score is 0-100 (100 = fully saturated).
-{suffix}""".format(suffix=ANTI_HALLUCINATION_SUFFIX)
+{ANTI_HALLUCINATION_SUFFIX}"""
 
     raw = await call_llm(
         prompt=prompt,

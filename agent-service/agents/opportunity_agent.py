@@ -30,12 +30,12 @@ async def run(
     Opportunity Agent: identifies market gaps, addressable customer segments,
     differentiation strategies, and computes an opportunity score.
     """
-    pain_points = (research_data or {}).get("pain_points", [])[:4]
+    pain_points = ((research_data or {}).get("pain_points") or [])[:4]
     competitor_weaknesses = [(c.get("name", "") + " weaknesses: " + str(c.get("weaknesses", [])))
-                             for c in (competitor_data or {}).get("competitors", [])[:3]]
-    gaps = (gap_data or {}).get("unexplored_opportunities", [])[:3]
-    swot_opps = (swot_data or {}).get("opportunities", [])[:3]
-    saturation = (competitor_data or {}).get("market_saturation_score", 50)
+                             for c in ((competitor_data or {}).get("competitors") or [])[:3]]
+    gaps = ((gap_data or {}).get("unexplored_opportunities") or [])[:3]
+    swot_opps = ((swot_data or {}).get("opportunities") or [])[:3]
+    saturation = (competitor_data or {}).get("market_saturation_score") or 50
 
     prompt = f"""Startup Idea: {idea}
 Industry: {industry}

@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import ANTI_HALLUCINATION_SUFFIX, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_for_search, truncate_sources
 
 _SYSTEM = (
     "You are a scientific research analyst. Summarize ONLY the research found in the "
@@ -25,14 +25,15 @@ async def run(idea: str, industry: str, healthcare_mode: bool = False) -> Dict[s
     Scientific Research Agent: searches for relevant academic publications and research
     findings, then assesses the scientific maturity of the market space.
     """
+    search_idea = truncate_for_search(idea)
     queries = [
-        f"{idea} {industry} research paper scientific study 2023 2024",
-        f"{idea} technology academic publication findings",
+        f"{search_idea} {industry} research paper scientific study 2023 2024",
+        f"{search_idea} technology academic publication findings",
     ]
     if healthcare_mode:
         queries.extend([
-            f"{idea} clinical trial results pubmed 2024",
-            f"{idea} medical research evidence systematic review",
+            f"{search_idea} clinical trial results pubmed 2024",
+            f"{search_idea} medical research evidence systematic review",
         ])
     else:
         queries.append(f"{industry} AI technology research innovation study")
@@ -79,13 +80,13 @@ Return a JSON object with exactly this structure:
   "unsupported_claims": ["list of field names not found in sources, or empty array"]
 }}
 Include 3 to 5 papers. research_maturity_score is 0-100 (100 = very mature field).
-{suffix}""".format(suffix=ANTI_HALLUCINATION_SUFFIX)
+{ANTI_HALLUCINATION_SUFFIX}"""
 
     raw = await call_llm(
         prompt=prompt,
         system_prompt=_SYSTEM_HC if healthcare_mode else _SYSTEM,
         model=FireworksModel.DEEPSEEK_V4_FLASH,
-        max_tokens=1500,
+        max_tokens=2500,
     )
     result = parse_json_response(raw)
     result["sources"] = extract_source_urls(search_results)

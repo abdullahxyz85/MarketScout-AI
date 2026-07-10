@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import ANTI_HALLUCINATION_SUFFIX, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_for_search, truncate_sources
 
 _SYSTEM = (
     "You are a market trend analyst. Identify and analyze ONLY trends, technologies, "
@@ -26,9 +26,10 @@ async def run(idea: str, industry: str, healthcare_mode: bool = False) -> Dict[s
     Trend Agent: identifies market trends, emerging technologies, regulatory changes,
     and disruptive forces affecting the target market space.
     """
+    search_idea = truncate_for_search(idea)
     queries = [
         f"{industry} market trends 2024 2025 emerging technology",
-        f"{idea} {industry} industry disruption innovation trends",
+        f"{search_idea} {industry} industry disruption innovation trends",
         f"{industry} regulatory technology AI automation trends 2025",
     ]
     if healthcare_mode:
@@ -75,13 +76,13 @@ Return a JSON object with exactly this structure:
   "unsupported_claims": ["list of field names not found in sources, or empty array"]
 }}
 Include 4 to 6 trends.
-{suffix}""".format(suffix=ANTI_HALLUCINATION_SUFFIX)
+{ANTI_HALLUCINATION_SUFFIX}"""
 
     raw = await call_llm(
         prompt=prompt,
         system_prompt=_SYSTEM_HC if healthcare_mode else _SYSTEM,
         model=FireworksModel.DEEPSEEK_V4_FLASH,
-        max_tokens=1500,
+        max_tokens=2500,
     )
     result = parse_json_response(raw)
     result["sources"] = extract_source_urls(search_results)

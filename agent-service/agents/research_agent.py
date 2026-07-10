@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import ANTI_HALLUCINATION_SUFFIX, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_for_search, truncate_sources
 
 _SYSTEM = (
     "You are a senior market research analyst. Analyze ONLY the provided web data and return "
@@ -26,13 +26,14 @@ async def run(idea: str, industry: str, healthcare_mode: bool = False) -> Dict[s
     Research Agent: performs parallel web searches on the startup idea and synthesizes
     findings into a structured market overview using the Fireworks AI LLM.
     """
+    search_idea = truncate_for_search(idea)
     queries = [
-        f"{idea} {industry} market size 2024 2025",
-        f"{idea} startup competitors market overview",
+        f"{search_idea} {industry} market size 2024 2025",
+        f"{search_idea} startup competitors market overview",
         f"{industry} market growth investment trends 2025",
     ]
     if healthcare_mode:
-        queries.append(f"{idea} FDA regulatory approval healthcare clinical market")
+        queries.append(f"{search_idea} FDA regulatory approval healthcare clinical market")
 
     raw_results = await asyncio.gather(
         *[search(q, max_results=4) for q in queries[:4]],
@@ -66,13 +67,13 @@ Return a JSON object with exactly this structure:
   "evidence_quality": "high|medium|low|insufficient_evidence",
   "unsupported_claims": ["list of field names not found in sources, or empty array"]
 }}
-{suffix}""".format(suffix=ANTI_HALLUCINATION_SUFFIX)
+{ANTI_HALLUCINATION_SUFFIX}"""
 
     raw = await call_llm(
         prompt=prompt,
         system_prompt=_SYSTEM_HC if healthcare_mode else _SYSTEM,
         model=FireworksModel.DEEPSEEK_V4_FLASH,
-        max_tokens=1500,
+        max_tokens=2500,
     )
     result = parse_json_response(raw)
     result["sources"] = source_urls
