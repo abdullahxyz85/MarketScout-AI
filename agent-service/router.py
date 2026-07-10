@@ -7,12 +7,13 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import Response, StreamingResponse
 
 from orchestrator.pipeline import cleanup_queue, get_queue, register_queue, run_pipeline
 from schemas.models import AskRequest, JobResponse, JobStatus, ResearchRequest, ScenarioRequest
 from services import memory_service, report_generator
+from services.auth_guard import _DEV_USER, require_auth
 from services.compare_service import compare_competitors, compare_ideas
 
 logger = logging.getLogger("agent-service.router")
@@ -44,6 +45,7 @@ async def _pipeline_task(
     job_id: str,
     request: ResearchRequest,
     queue: asyncio.Queue,
+    auth_user_id: str | None = None,
 ) -> None:
     """Background task that runs the full multi-agent pipeline and publishes SSE events."""
     logger.info("job %s: pipeline started (idea=%r, industry=%r)", job_id, request.idea, request.industry)
@@ -99,13 +101,19 @@ async def _pipeline_task(
             "result": result_payload,
         })
 
-        if request.user_id:
+        # Persist result: prefer auth_user_id from JWT (production),
+        # fall back to request.user_id from body (dev mode only).
+        effective_user_id = (
+            auth_user_id if auth_user_id and auth_user_id != _DEV_USER
+            else request.user_id
+        )
+        if effective_user_id:
             asyncio.create_task(
                 memory_service.save_research_result(
                     job_id=job_id,
                     idea=request.idea,
                     industry=request.industry,
-                    user_id=request.user_id,
+                    user_id=effective_user_id,
                     result=dict(final_state),
                 )
             )
@@ -133,7 +141,11 @@ async def _delayed_cleanup(job_id: str, delay_seconds: int = 300) -> None:
 
 
 @router.post("/research/start", response_model=JobResponse, tags=["research"])
-async def start_research(request: ResearchRequest, background_tasks: BackgroundTasks):
+async def start_research(
+    request: ResearchRequest,
+    background_tasks: BackgroundTasks,
+    auth_user_id: str = Depends(require_auth),
+):
     """
     Start a new multi-agent market research job.
     Returns a job_id that can be used to stream progress via SSE.
@@ -150,13 +162,13 @@ async def start_research(request: ResearchRequest, background_tasks: BackgroundT
         "result": None,
     }
 
-    background_tasks.add_task(_pipeline_task, job_id, request, queue)
+    background_tasks.add_task(_pipeline_task, job_id, request, queue, auth_user_id)
 
     return JobResponse(job_id=job_id, status=JobStatus.RUNNING, created_at=created_at)
 
 
 @router.get("/research/{job_id}/stream", tags=["research"])
-async def stream_research_progress(job_id: str):
+async def stream_research_progress(job_id: str, _: str = Depends(require_auth)):
     """
     Server-Sent Events (SSE) endpoint. Streams agent progress events in real time.
     Each event: { progress, current_agent, status, done, result? }
@@ -181,7 +193,7 @@ async def stream_research_progress(job_id: str):
 
 
 @router.get("/research/{job_id}/status", response_model=JobResponse, tags=["research"])
-async def get_job_status(job_id: str):
+async def get_job_status(job_id: str, _: str = Depends(require_auth)):
     """Return the current status of a research job."""
     job = _jobs.get(job_id)
     if not job:
@@ -190,7 +202,7 @@ async def get_job_status(job_id: str):
 
 
 @router.get("/research/{job_id}/result", tags=["research"])
-async def get_research_result(job_id: str):
+async def get_research_result(job_id: str, _: str = Depends(require_auth)):
     """
     Return the complete research result for a completed job.
     Returns HTTP 202 if the job is still in progress.
@@ -212,7 +224,7 @@ async def get_research_result(job_id: str):
 
 
 @router.get("/research/{job_id}/report/pdf", tags=["research"])
-async def download_pdf_report(job_id: str):
+async def download_pdf_report(job_id: str, _: str = Depends(require_auth)):
     """Generate and return a PDF market intelligence report for a completed job."""
     job = _jobs.get(job_id)
     if job and job["status"] == JobStatus.COMPLETED and job["result"]:
@@ -233,7 +245,7 @@ async def download_pdf_report(job_id: str):
 
 
 @router.post("/research/{job_id}/scenario", tags=["research"])
-async def simulate_scenario(job_id: str, request: ScenarioRequest):
+async def simulate_scenario(job_id: str, request: ScenarioRequest, _: str = Depends(require_auth)):
     """
     Run a 'what-if' scenario simulation against a completed research result.
     Analyzes impact on market opportunity, competitive positioning, revenue, risk, and timeline.
@@ -256,6 +268,13 @@ async def simulate_scenario(job_id: str, request: ScenarioRequest):
     return result
 
 
+@router.get("/research/history/me", tags=["research"])
+async def get_my_history(auth_user_id: str = Depends(require_auth)):
+    """Return the research history for the authenticated user."""
+    history = await memory_service.get_user_research_history(user_id=auth_user_id)
+    return {"history": history}
+
+
 @router.get("/research/history/{user_id}", tags=["research"])
 async def get_user_history(user_id: str):
     """Return the research history for a given user from persistent storage."""
@@ -269,6 +288,7 @@ async def compare_two_ideas(
     job_id_b: str,
     label_a: str = "Idea A",
     label_b: str = "Idea B",
+    _: str = Depends(require_auth),
 ):
     """
     Compare two completed research jobs side-by-side across all key dimensions.
@@ -293,6 +313,7 @@ async def compare_two_competitors(
     job_id_b: str,
     label_a: str = "Idea A",
     label_b: str = "Idea B",
+    _: str = Depends(require_auth),
 ):
     """
     Compare the competitive landscapes of two completed research jobs.
@@ -330,7 +351,7 @@ async def _get_completed_state(job_id: str) -> Dict[str, Any]:
 # ── Startup Kit endpoints (LLM-based, on-demand) ──────────────────────────────
 
 @router.get("/research/{job_id}/business-plan", tags=["startup-kit"])
-async def get_business_plan(job_id: str):
+async def get_business_plan(job_id: str, _: str = Depends(require_auth)):
     """Generate a comprehensive 15-section business plan from a completed research job."""
     from agents.business_plan_agent import run as _run
     state = await _get_completed_state(job_id)
@@ -338,7 +359,7 @@ async def get_business_plan(job_id: str):
 
 
 @router.get("/research/{job_id}/investor-memo", tags=["startup-kit"])
-async def get_investor_memo(job_id: str):
+async def get_investor_memo(job_id: str, _: str = Depends(require_auth)):
     """Generate a VC-style investor memo with verdict from a completed research job."""
     from agents.investor_agent import run as _run
     state = await _get_completed_state(job_id)
@@ -346,7 +367,7 @@ async def get_investor_memo(job_id: str):
 
 
 @router.get("/research/{job_id}/pitch-deck", tags=["startup-kit"])
-async def get_pitch_deck(job_id: str):
+async def get_pitch_deck(job_id: str, _: str = Depends(require_auth)):
     """Generate a 10-slide structured pitch deck from a completed research job."""
     from agents.pitch_agent import run as _run
     state = await _get_completed_state(job_id)
@@ -356,7 +377,7 @@ async def get_pitch_deck(job_id: str):
 # ── Quality & Evidence endpoints (deterministic, no LLM) ─────────────────────
 
 @router.get("/research/{job_id}/quality-report", tags=["quality"])
-async def get_quality_report(job_id: str):
+async def get_quality_report(job_id: str, _: str = Depends(require_auth)):
     """Return a deterministic pipeline quality report (grade A-F, hallucination risk, etc.)."""
     from services.quality_report import generate
     state = await _get_completed_state(job_id)
@@ -364,7 +385,7 @@ async def get_quality_report(job_id: str):
 
 
 @router.get("/research/{job_id}/evidence", tags=["quality"])
-async def get_evidence(job_id: str):
+async def get_evidence(job_id: str, _: str = Depends(require_auth)):
     """Extract and summarise all grounded evidence claims from a completed research job."""
     from services.evidence_engine import extract_all, summarise
     state = await _get_completed_state(job_id)
@@ -377,7 +398,7 @@ async def get_evidence(job_id: str):
 
 
 @router.get("/research/{job_id}/sources", tags=["quality"])
-async def get_source_credibility(job_id: str):
+async def get_source_credibility(job_id: str, _: str = Depends(require_auth)):
     """Rank all sources from a completed research job by credibility (1–5 stars)."""
     from services.source_ranker import rank as _rank
     state = await _get_completed_state(job_id)
@@ -411,7 +432,7 @@ async def get_source_credibility(job_id: str):
 # ── Ask Your Research endpoint (LLM Q&A over pipeline results) ───────────────
 
 @router.post("/research/{job_id}/ask", tags=["ask"])
-async def ask_research(job_id: str, request: AskRequest):
+async def ask_research(job_id: str, request: AskRequest, _: str = Depends(require_auth)):
     """
     Ask a natural-language question about a completed research job.
     The LLM answers strictly from the pipeline results — no hallucination.
