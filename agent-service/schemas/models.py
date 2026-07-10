@@ -47,3 +47,7 @@ class ProgressEvent(BaseModel):
     done: bool
     error: Optional[str] = None
     result: Optional[Dict[str, Any]] = None
+
+
+class AskRequest(BaseModel):
+    question: str = Field(..., min_length=3, max_length=500, description="Question about the research results")

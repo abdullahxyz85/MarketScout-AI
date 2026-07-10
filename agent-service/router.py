@@ -11,7 +11,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.responses import Response, StreamingResponse
 
 from orchestrator.pipeline import cleanup_queue, get_queue, register_queue, run_pipeline
-from schemas.models import JobResponse, JobStatus, ResearchRequest, ScenarioRequest
+from schemas.models import AskRequest, JobResponse, JobStatus, ResearchRequest, ScenarioRequest
 from services import memory_service, report_generator
 from services.compare_service import compare_competitors, compare_ideas
 
@@ -405,4 +405,78 @@ async def get_source_credibility(job_id: str):
         "top_sources": ranked[:5],
         "average_credibility": avg,
         "total_sources": len(ranked),
+    }
+
+
+# ── Ask Your Research endpoint (LLM Q&A over pipeline results) ───────────────
+
+@router.post("/research/{job_id}/ask", tags=["ask"])
+async def ask_research(job_id: str, request: AskRequest):
+    """
+    Ask a natural-language question about a completed research job.
+    The LLM answers strictly from the pipeline results — no hallucination.
+    """
+    state = await _get_completed_state(job_id)
+    from services.fireworks_client import call_llm, FireworksModel
+
+    idea = state.get("idea", "")
+    industry = state.get("industry", "")
+    report = state.get("report") or {}
+    research = state.get("research") or {}
+    competitors = state.get("competitors") or {}
+    innovation = state.get("innovation_score") or {}
+    risks = state.get("risks") or {}
+    opportunities = state.get("opportunities") or {}
+    scientific = state.get("scientific") or {}
+    patents = state.get("patents") or {}
+    gaps = state.get("research_gaps") or {}
+    strategy = state.get("strategy") or {}
+
+    context = f"""You are an expert research assistant for a startup market intelligence platform.
+Answer the user's question using ONLY the research data below. If the data does not contain
+enough information to answer, say so clearly. Do not invent facts.
+
+=== RESEARCH CONTEXT ===
+Idea: {idea}
+Industry: {industry}
+
+Executive Summary: {report.get("executive_summary", "N/A")}
+Market Score: {report.get("market_score", "N/A")}/100
+Innovation Score: {innovation.get("innovation_score", "N/A")}/100
+Innovation Grade: {innovation.get("grade", "N/A")}
+Competition Level: {report.get("competition_level", "N/A")}
+Overall Risk Level: {risks.get("overall_risk_level", "N/A")}
+
+Market Size: {research.get("market_size", "N/A")}
+Growth Rate: {research.get("growth_rate", "N/A")}
+TAM: {research.get("tam", "N/A")}
+
+Key Competitors: {", ".join(c.get("name","") for c in (competitors.get("competitors") or [])[:5])}
+
+Top Opportunities: {"; ".join((opportunities.get("top_opportunities") or [])[:3])}
+Key Risks: {"; ".join(r.get("description","") for r in (risks.get("key_risks") or [])[:3])}
+Research Gaps: {"; ".join((gaps.get("identified_gaps") or [])[:3])}
+Strategy Summary: {strategy.get("executive_summary", "N/A")}
+
+Scientific Maturity: {scientific.get("research_maturity", "N/A")}
+Patent Landscape: {patents.get("ip_landscape", "N/A")}
+Freedom to Operate: {patents.get("freedom_to_operate", "N/A")}
+
+Recommendations: {"; ".join((report.get("recommendations") or [])[:5])}
+=== END CONTEXT ===
+"""
+
+    answer = await call_llm(
+        prompt=request.question,
+        system_prompt=context,
+        model=FireworksModel.DEEPSEEK_V4_FLASH,
+        max_tokens=800,
+    )
+
+    return {
+        "question": request.question,
+        "answer": answer.strip(),
+        "job_id": job_id,
+        "idea": idea,
+        "industry": industry,
     }

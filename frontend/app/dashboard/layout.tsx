@@ -20,6 +20,9 @@ import {
   HeartPulse,
   Briefcase,
   ShieldCheck,
+  FlaskConical,
+  Compass,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/logo";
@@ -34,8 +37,11 @@ const sidebarItems = [
   { icon: FileText,        label: "Reports",        href: "/dashboard/reports" },
   { icon: Briefcase,       label: "Startup Kit",    href: "/dashboard/startup-kit" },
   { icon: ShieldCheck,     label: "Quality",        href: "/dashboard/quality" },
+  { icon: FlaskConical,    label: "Scientific",     href: "/dashboard/scientific" },
+  { icon: Compass,         label: "White Space",    href: "/dashboard/whitespace" },
   { icon: Sliders,         label: "Scenarios",      href: "/dashboard/scenarios" },
   { icon: GitCompare,      label: "Compare",        href: "/dashboard/compare" },
+  { icon: MessageCircle,   label: "Ask Research",   href: "/dashboard/ask" },
   { icon: Settings,        label: "Settings",       href: "/dashboard/settings" },
 ];
 
@@ -191,6 +197,10 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     stage === "running" && pathname !== "/dashboard/research";
 
   useEffect(() => {
+    if (process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
+      setUser({ id: "demo", email: "demo@marketscout.ai", name: "Demo User", picture: null });
+      return;
+    }
     fetch("/api/users/me", { credentials: "include" })
       .then((res) => {
         if (!res.ok) throw new Error("unauthenticated");
