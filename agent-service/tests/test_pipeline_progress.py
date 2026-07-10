@@ -64,7 +64,8 @@ async def test_run_step_returns_result_and_progress_on_success():
     errors = []
     result, progress = await _run_step("job-1", 0, errors, "TestAgent", ok())
 
-    assert result == {"value": 42}
+    # _post_validate may add _validation_warnings / _hallucination_flags — check core value
+    assert result.get("value") == 42
     assert progress == _progress_after(0)
     assert errors == []
 

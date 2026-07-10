@@ -111,3 +111,20 @@ def format_sources_for_prompt(results: List[Dict[str, Any]]) -> str:
 def extract_source_urls(results: List[Dict[str, Any]], limit: int = 5) -> List[str]:
     """Extract URLs from search results."""
     return [r.get("url", "") for r in results[:limit] if r.get("url")]
+
+
+# ─── Anti-hallucination prompt suffix ────────────────────────────────────────
+# Append to the user prompt of every web-search agent to enforce grounded output.
+ANTI_HALLUCINATION_SUFFIX = """
+CRITICAL EVIDENCE RULES — you MUST follow these exactly:
+1. Use ONLY information explicitly found in the numbered sources [1], [2], … above.
+2. Do NOT invent company names, funding amounts, market sizes, paper titles, patent numbers, or regulatory facts.
+3. When a field has no supporting evidence in the sources, set its value to null (not a made-up estimate).
+4. For every quantitative claim (market size, growth rate, revenue, funding amount) set "evidence_quality" accordingly:
+   - "high"   → the exact figure appears verbatim in a source
+   - "medium" → the figure was calculated or derived from source data
+   - "low"    → the figure is an inference with weak source support
+   - "insufficient_evidence" → no relevant source mentions it at all
+5. "unsupported_claims" must list the JSON keys whose values you could NOT find in the sources.
+6. Do NOT use general model knowledge that contradicts or supplements what is in the sources.
+"""

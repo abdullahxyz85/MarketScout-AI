@@ -26,6 +26,73 @@ import agents.trend_agent as trend_agent
 import agents.validation_agent as validation_agent
 from schemas.state import ResearchState
 from services import agent_logger
+from services.output_validator import validate as _ov_validate
+from services.hallucination_checker import check_claims as _hc_check_claims, extract_claims as _hc_extract_claims
+
+# ── Validator key mapping: AGENT_SEQUENCE name → output_validator schema key ──
+_VALIDATOR_KEY: Dict[str, str] = {
+    "Idea Guard":                  "idea_guard",
+    "Research Agent":              "research",
+    "Competitor Agent":            "competitors",
+    "Scientific Research Agent":   "scientific",
+    "Patent Intelligence Agent":   "patents",
+    "Funding Agent":               "funding",
+    "Trend Agent":                 "trends",
+    "Research Gap Agent":          "research_gaps",
+    "SWOT Agent":                  "swot",
+    "Opportunity Agent":           "opportunities",
+    "Risk Agent":                  "risks",
+    "Innovation Scoring Agent":    "innovation_score",
+    "Validation Agent":            "validation",
+    "Strategy Agent":              "strategy",
+    "Report Generator":            "report",
+}
+
+# Web agents that provide sources → eligible for hallucination checking
+_WEB_AGENTS = {
+    "Research Agent", "Competitor Agent", "Scientific Research Agent",
+    "Patent Intelligence Agent", "Funding Agent", "Trend Agent", "Research Gap Agent",
+}
+
+
+def _post_validate(agent_name: str, result: Dict[str, Any], errors: list) -> None:
+    """Run output_validator + hallucination_checker on a finished agent result.
+
+    Mutates *result* in-place by adding:
+      _validation_warnings  – list[str]  (schema violations)
+      _hallucination_flags  – list[dict] (weak/unsupported claims)
+
+    Never raises — all errors are caught and appended to the errors list.
+    """
+    try:
+        validator_key = _VALIDATOR_KEY.get(agent_name, "")
+        if validator_key:
+            vr = _ov_validate(validator_key, result)
+            if vr.warnings:
+                result["_validation_warnings"] = vr.warnings
+                for w in vr.warnings:
+                    logger.warning("OutputValidator [%s]: %s", agent_name, w)
+
+        if agent_name in _WEB_AGENTS:
+            sources = result.get("sources") or []
+            if sources:
+                claims = _hc_extract_claims(result, max_claims=8)
+                if claims:
+                    hal_results = _hc_check_claims(claims, sources)
+                    flags = [
+                        {"claim": claim[:120], "status": r.status, "score": round(r.score, 3)}
+                        for claim, r in zip(claims, hal_results)
+                        if r.status != "Supported"
+                    ]
+                    if flags:
+                        result["_hallucination_flags"] = flags
+                        logger.warning(
+                            "HallucinationChecker [%s]: %d unsupported claim(s)",
+                            agent_name, len(flags),
+                        )
+    except Exception as exc:
+        errors.append(f"PostValidate[{agent_name}]: {exc}")
+        logger.debug("post_validate error for %s: %s", agent_name, exc)
 
 # Single source of truth for pipeline order — progress is derived from a step's
 # real position in this list (index / total), never a hand-picked percentage.
@@ -117,6 +184,8 @@ async def _run_step(
     else:
         duration = time.monotonic() - start
         logger.info("job %s: %s completed in %.1fs", job_id, agent_name, duration)
+        # ── Deterministic post-validation (output schema + hallucination check) ──
+        _post_validate(agent_name, result, errors)
         asyncio.create_task(agent_logger.log_agent_complete(job_id, agent_name, duration, result))
     progress = _progress_after(step_index)
     await _push(job_id, {"progress": progress, "current_agent": agent_name, "status": "completed", "done": False})
