@@ -309,3 +309,100 @@ async def compare_two_competitors(
 
     state_a, state_b = await asyncio.gather(_get_result(job_id_a), _get_result(job_id_b))
     return compare_competitors(state_a, state_b, label_a=label_a, label_b=label_b)
+
+
+# ── Shared helper ─────────────────────────────────────────────────────────────
+
+async def _get_completed_state(job_id: str) -> Dict[str, Any]:
+    """Retrieve a completed job's full pipeline state (in-memory first, then Supabase)."""
+    job = _jobs.get(job_id)
+    if job and job.get("result"):
+        return job["result"]
+    result = await memory_service.get_research_result(job_id)
+    if result:
+        return result
+    raise HTTPException(
+        status_code=404,
+        detail=f"Completed job '{job_id}' not found. Run a market research first.",
+    )
+
+
+# ── Startup Kit endpoints (LLM-based, on-demand) ──────────────────────────────
+
+@router.get("/research/{job_id}/business-plan", tags=["startup-kit"])
+async def get_business_plan(job_id: str):
+    """Generate a comprehensive 15-section business plan from a completed research job."""
+    from agents.business_plan_agent import run as _run
+    state = await _get_completed_state(job_id)
+    return await _run(state)
+
+
+@router.get("/research/{job_id}/investor-memo", tags=["startup-kit"])
+async def get_investor_memo(job_id: str):
+    """Generate a VC-style investor memo with verdict from a completed research job."""
+    from agents.investor_agent import run as _run
+    state = await _get_completed_state(job_id)
+    return await _run(state)
+
+
+@router.get("/research/{job_id}/pitch-deck", tags=["startup-kit"])
+async def get_pitch_deck(job_id: str):
+    """Generate a 10-slide structured pitch deck from a completed research job."""
+    from agents.pitch_agent import run as _run
+    state = await _get_completed_state(job_id)
+    return await _run(state)
+
+
+# ── Quality & Evidence endpoints (deterministic, no LLM) ─────────────────────
+
+@router.get("/research/{job_id}/quality-report", tags=["quality"])
+async def get_quality_report(job_id: str):
+    """Return a deterministic pipeline quality report (grade A-F, hallucination risk, etc.)."""
+    from services.quality_report import generate
+    state = await _get_completed_state(job_id)
+    return generate(state).to_dict()
+
+
+@router.get("/research/{job_id}/evidence", tags=["quality"])
+async def get_evidence(job_id: str):
+    """Extract and summarise all grounded evidence claims from a completed research job."""
+    from services.evidence_engine import extract_all, summarise
+    state = await _get_completed_state(job_id)
+    evidences = extract_all(state)
+    return {
+        "evidences": [e.to_dict() for e in evidences],
+        "summary": summarise(evidences),
+        "total": len(evidences),
+    }
+
+
+@router.get("/research/{job_id}/sources", tags=["quality"])
+async def get_source_credibility(job_id: str):
+    """Rank all sources from a completed research job by credibility (1–5 stars)."""
+    from services.source_ranker import rank as _rank
+    state = await _get_completed_state(job_id)
+    seen: set = set()
+    ranked = []
+    for val in state.values():
+        if not isinstance(val, dict):
+            continue
+        for src in (val.get("sources") or []):
+            url = src if isinstance(src, str) else (src.get("url", "") if isinstance(src, dict) else "")
+            if url and url not in seen:
+                seen.add(url)
+                r = _rank(url)
+                ranked.append({
+                    "url": url,
+                    "stars": r.stars,
+                    "score": r.score,
+                    "category": r.category,
+                    "label": r.label,
+                })
+    ranked.sort(key=lambda x: x["score"], reverse=True)
+    avg = round(sum(x["score"] for x in ranked) / max(len(ranked), 1), 3)
+    return {
+        "ranked_sources": ranked,
+        "top_sources": ranked[:5],
+        "average_credibility": avg,
+        "total_sources": len(ranked),
+    }

@@ -18,6 +18,8 @@ import {
   Sliders,
   GitCompare,
   HeartPulse,
+  Briefcase,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/logo";
@@ -30,6 +32,8 @@ const sidebarItems = [
   { icon: HeartPulse,      label: "Healthcare",     href: "/dashboard/healthcare" },
   { icon: Users,           label: "Competitors",    href: "/dashboard/competitors" },
   { icon: FileText,        label: "Reports",        href: "/dashboard/reports" },
+  { icon: Briefcase,       label: "Startup Kit",    href: "/dashboard/startup-kit" },
+  { icon: ShieldCheck,     label: "Quality",        href: "/dashboard/quality" },
   { icon: Sliders,         label: "Scenarios",      href: "/dashboard/scenarios" },
   { icon: GitCompare,      label: "Compare",        href: "/dashboard/compare" },
   { icon: Settings,        label: "Settings",       href: "/dashboard/settings" },
