@@ -17,6 +17,7 @@ import {
   X,
   Sliders,
   GitCompare,
+  HeartPulse,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/logo";
@@ -24,13 +25,14 @@ import { AnimatedBackground } from "@/components/landing/animated-background";
 import { ResearchProvider, useResearch } from "@/lib/research-context";
 
 const sidebarItems = [
-  { icon: LayoutDashboard, label: "Dashboard",    href: "/dashboard" },
-  { icon: Search,          label: "New Research", href: "/dashboard/research" },
-  { icon: Users,           label: "Competitors",  href: "/dashboard/competitors" },
-  { icon: FileText,        label: "Reports",      href: "/dashboard/reports" },
-  { icon: Sliders,         label: "Scenarios",    href: "/dashboard/scenarios" },
-  { icon: GitCompare,      label: "Compare",      href: "/dashboard/compare" },
-  { icon: Settings,        label: "Settings",     href: "/dashboard/settings" },
+  { icon: LayoutDashboard, label: "Dashboard",      href: "/dashboard" },
+  { icon: Search,          label: "New Research",   href: "/dashboard/research" },
+  { icon: HeartPulse,      label: "Healthcare",     href: "/dashboard/healthcare" },
+  { icon: Users,           label: "Competitors",    href: "/dashboard/competitors" },
+  { icon: FileText,        label: "Reports",        href: "/dashboard/reports" },
+  { icon: Sliders,         label: "Scenarios",      href: "/dashboard/scenarios" },
+  { icon: GitCompare,      label: "Compare",        href: "/dashboard/compare" },
+  { icon: Settings,        label: "Settings",       href: "/dashboard/settings" },
 ];
 
 type CurrentUser = {
@@ -63,12 +65,12 @@ function SidebarContent({
       )}>
         {(!collapsed || mobile) && (
           <Link href="/" className="min-w-0">
-            <Logo size={28} />
+            <Logo size={22} />
           </Link>
         )}
         {collapsed && !mobile && (
           <Link href="/">
-            <Logo variant="icon" size={28} />
+            <Logo variant="icon" size={24} />
           </Link>
         )}
         {!mobile && (
@@ -220,15 +222,15 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       : pathname.startsWith(href);
 
   return (
-    <div className="min-h-screen bg-[#050508] relative overflow-hidden">
+    <div className="min-h-screen relative overflow-hidden">
       <AnimatedBackground />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.08),transparent_38%),radial-gradient(circle_at_80%_20%,rgba(34,211,238,0.06),transparent_28%),linear-gradient(to_bottom,rgba(3,3,6,0.12),rgba(3,3,6,0.28))]" />
-      <div className="flex h-screen overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(99,102,241,0.18),transparent_36%),radial-gradient(circle_at_86%_76%,rgba(6,182,212,0.14),transparent_34%)]" />
+      <div className="flex h-screen overflow-hidden relative z-10">
         {/* Desktop Sidebar */}
         <motion.aside
-          animate={{ width: collapsed ? 64 : 240 }}
+          animate={{ width: collapsed ? 64 : 220 }}
           transition={{ type: "spring", stiffness: 400, damping: 35 }}
-          className="hidden lg:flex flex-col border-r border-white/[0.05] bg-black/18 backdrop-blur-3xl overflow-hidden flex-shrink-0"
+          className="hidden lg:flex flex-col border-r border-white/[0.06] bg-gradient-to-b from-black/20 via-black/10 to-transparent backdrop-blur-3xl overflow-hidden flex-shrink-0"
         >
           <SidebarContent
             collapsed={collapsed}
@@ -273,7 +275,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         {/* Main */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
-          <header className="h-14 border-b border-white/[0.05] bg-black/14 backdrop-blur-3xl flex items-center justify-between px-4 lg:px-6 flex-shrink-0">
+          <header className="h-14 border-b border-white/[0.06] bg-gradient-to-r from-black/20 via-black/10 to-transparent backdrop-blur-3xl flex items-center justify-between px-4 lg:px-6 flex-shrink-0">
             <div className="flex items-center gap-3">
               <button
                 className="lg:hidden p-2 rounded-lg hover:bg-white/5 text-white/50 hover:text-white transition-colors"
@@ -326,8 +328,11 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           </header>
 
           <main className="flex-1 overflow-auto p-4 lg:p-6 relative">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.06),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(6,182,212,0.05),transparent_26%)]" />
-            <div className="relative">{children}</div>
+            <div className="min-h-full rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.05] via-white/[0.03] to-transparent backdrop-blur-2xl shadow-2xl shadow-black/20 p-4 lg:p-6 relative overflow-hidden">
+              {/* subtle color glow inside the island */}
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(99,102,241,0.08),transparent_34%),radial-gradient(circle_at_82%_78%,rgba(6,182,212,0.06),transparent_30%)]" />
+              <div className="relative">{children}</div>
+            </div>
           </main>
         </div>
       </div>

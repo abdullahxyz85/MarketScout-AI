@@ -33,7 +33,7 @@ const tabs = [
 
 function ProfileTab() {
   const [saved, setSaved] = useState(false);
-  const [profile, setProfile] = useState<{ display_name?: string; email?: string } | null>(null);
+  const [profile, setProfile] = useState<{ display_name?: string; email?: string; avatar_url?: string } | null>(null);
   const save = () => { setSaved(true); setTimeout(() => setSaved(false), 2000); };
 
   useEffect(() => {
@@ -45,6 +45,7 @@ function ProfileTab() {
 
   const displayName = profile?.display_name ?? '';
   const email = profile?.email ?? '';
+  const avatarUrl = profile?.avatar_url;
   const initials = displayName
     ? displayName.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()
     : '—';
@@ -57,8 +58,13 @@ function ProfileTab() {
         </GlassCardHeader>
         <GlassCardContent className="space-y-4">
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-2xl shadow-glow">
-              {initials}
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-2xl shadow-glow overflow-hidden">
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt={displayName || email} className="w-full h-full object-cover" />
+              ) : (
+                initials
+              )}
             </div>
             <div>
               <div className="text-white font-semibold">{displayName || 'Unnamed User'}</div>
@@ -260,7 +266,7 @@ export default function SettingsPage() {
   const Content = tabContent[activeTab];
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-8 max-w-4xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold text-white mb-1">
           Account <span className="text-gradient">Settings</span>

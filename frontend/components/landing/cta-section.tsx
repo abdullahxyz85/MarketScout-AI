@@ -7,7 +7,7 @@ import { AnimatedButton } from '@/components/ui/animated-button';
 
 export function CTASection() {
   return (
-    <section className="py-32 relative overflow-hidden">
+    <section id="cta" className="py-32 relative overflow-hidden">
       {/* Full-width gradient backdrop */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-indigo-900/20 to-transparent" />
@@ -53,7 +53,7 @@ export function CTASection() {
           </p>
 
           <div className="flex flex-wrap gap-4 justify-center mb-8">
-            <Link href="/signup">
+            <Link href="/dashboard">
               <AnimatedButton size="lg" className="min-w-48">
                 Start Free Research
                 <ArrowRight className="w-5 h-5" />

@@ -41,7 +41,7 @@ export function Logo({ variant = "full", className, size = 32 }: LogoProps) {
   }
 
   return (
-    <span className={cn("inline-flex items-center gap-0.5 min-w-0 text-slate-900 dark:text-white", className)}>
+    <span className={cn("inline-flex items-center gap-1.5 min-w-0 text-slate-900 dark:text-white", className)}>
       <span className="inline-flex items-center gap-0 min-w-0">
         {mark}
         <span

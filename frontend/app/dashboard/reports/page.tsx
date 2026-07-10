@@ -113,7 +113,7 @@ export default function ReportsPage() {
 
   if (history.length === 0) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="space-y-8 max-w-7xl mx-auto">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white mb-0.5">
@@ -147,7 +147,7 @@ export default function ReportsPage() {
   const filtered = reports.filter((r) => r.title.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-8 max-w-7xl mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white mb-0.5">

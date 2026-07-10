@@ -1,102 +1,49 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import {
-  Search,
-  Users,
-  BarChart3,
-  TrendingUp,
-  Target,
-  Lightbulb,
-  ShieldAlert,
-  FileText,
-  Zap,
-  Clock,
-} from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { GlassCard, GlassCardContent } from '@/components/ui/glass-card';
 import { AnimatedProgress } from '@/components/ui/animated-progress';
 import { StatusBadge } from '@/components/ui/animated-badge';
+import { AGENT_SEQUENCE } from '@/lib/agents';
 
-const agents = [
-  {
-    name: 'Research Agent',
-    icon: Search,
-    description: 'Gathers and synthesizes data from thousands of sources',
-    status: 'running' as const,
-    progress: 78,
-    estimatedTime: '2 min left',
-    color: 'from-indigo-500 to-purple-500',
-  },
-  {
-    name: 'Competitor Agent',
-    icon: Users,
-    description: 'Analyzes competitor strategies and market positioning',
-    status: 'running' as const,
-    progress: 92,
-    estimatedTime: '30 sec left',
-    color: 'from-purple-500 to-pink-500',
-  },
-  {
-    name: 'Market Agent',
-    icon: BarChart3,
-    description: 'Calculates market size and growth projections',
-    status: 'completed' as const,
-    progress: 100,
-    estimatedTime: 'Completed',
-    color: 'from-cyan-500 to-blue-500',
-  },
-  {
-    name: 'Trend Agent',
-    icon: TrendingUp,
-    description: 'Identifies emerging trends and market shifts',
-    status: 'running' as const,
-    progress: 45,
-    estimatedTime: '4 min left',
-    color: 'from-emerald-500 to-teal-500 to-teal-500',
-  },
-  {
-    name: 'SWOT Agent',
-    icon: Target,
-    description: 'Generates comprehensive SWOT analysis',
-    status: 'pending' as const,
-    progress: 0,
-    estimatedTime: 'Waiting',
-    color: 'from-orange-500 to-red-500',
-  },
-  {
-    name: 'Opportunity Agent',
-    icon: Lightbulb,
-    description: 'Discovers hidden market opportunities',
-    status: 'pending' as const,
-    progress: 0,
-    estimatedTime: 'Waiting',
-    color: 'from-yellow-500 to-orange-500',
-  },
-  {
-    name: 'Risk Agent',
-    icon: ShieldAlert,
-    description: 'Assesses potential risks and challenges',
-    status: 'pending' as const,
-    progress: 0,
-    estimatedTime: 'Waiting',
-    color: 'from-red-500 to-rose-500',
-  },
-  {
-    name: 'Report Generator',
-    icon: FileText,
-    description: 'Compiles findings into a comprehensive report',
-    status: 'pending' as const,
-    progress: 0,
-    estimatedTime: 'Waiting',
-    color: 'from-indigo-500 to-blue-500',
-  },
-];
+const DESCRIPTIONS: Record<string, string> = {
+  'Research Agent': 'Gathers and synthesizes market data from thousands of sources',
+  'Competitor Agent': 'Identifies and profiles key competitors and their market share',
+  'Scientific Research Agent': 'Surveys academic research and assesses scientific maturity',
+  'Patent Intelligence Agent': 'Maps the patent landscape and freedom-to-operate risks',
+  'Funding Agent': 'Tracks funding rounds and investor activity in the space',
+  'Trend Agent': 'Detects emerging trends, tech shifts, and regulatory changes',
+  'Research Gap Agent': 'Surfaces unexplored opportunities and market blind spots',
+  'SWOT Agent': 'Builds a complete strengths, weaknesses, opportunities & threats analysis',
+  'Opportunity Agent': 'Scores market gaps and addressable customer segments',
+  'Risk Agent': 'Evaluates business, technical, and regulatory risks',
+  'Innovation Scoring Agent': 'Computes a composite innovation score from every signal',
+  'Validation Agent': "Stress-tests assumptions like a critical devil's advocate",
+  'Strategy Agent': 'Crafts a go-to-market and competitive strategy',
+  'Report Generator': 'Compiles every finding into one intelligence report',
+};
+
+const agents = AGENT_SEQUENCE.map((agent, i) => {
+  const status = i < 6 ? ('completed' as const) : i === 6 ? ('running' as const) : ('pending' as const);
+  const progress = status === 'completed' ? 100 : status === 'running' ? 55 : 0;
+  const estimatedTime = status === 'completed' ? 'Completed' : status === 'running' ? '1 min left' : 'Waiting';
+  return {
+    name: agent.name,
+    icon: agent.icon,
+    color: agent.color,
+    description: DESCRIPTIONS[agent.name] ?? '',
+    status,
+    progress,
+    estimatedTime,
+  };
+});
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.1 },
+    transition: { staggerChildren: 0.06 },
   },
 };
 
@@ -107,7 +54,7 @@ const itemVariants = {
 
 export function AIAgentSection() {
   return (
-    <section className="py-24 relative">
+    <section id="agents" className="py-24 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -119,7 +66,7 @@ export function AIAgentSection() {
             Meet Your <span className="text-gradient">AI Agents</span>
           </h2>
           <p className="text-lg text-white/60 max-w-2xl mx-auto">
-            Specialized AI agents working together to deliver comprehensive market intelligence.
+            14 specialized AI agents working together to deliver comprehensive market intelligence.
           </p>
         </motion.div>
 

@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles, ArrowRight, Zap, BarChart3,
-  Target, ShieldAlert, FileText, Lightbulb, Clock,
+  ShieldAlert, FileText, Lightbulb, Clock,
   Compass, Activity, AlertCircle,
   Download, RefreshCw,
 } from 'lucide-react';
@@ -96,7 +96,7 @@ export default function ResearchPage() {
   const handleStart = () => startResearch(AGENTS.map((a) => a.name));
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-8 max-w-5xl mx-auto">
       {error && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
           className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
