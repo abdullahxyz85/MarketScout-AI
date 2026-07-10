@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 import {
   BarChart3, TrendingUp, Building2, Activity, Download,
   RefreshCw, Zap, Clock, Users, Target, ShieldAlert,
-  Lightbulb, ChevronRight, FileText,
+  Lightbulb, ChevronRight, FileText, HeartPulse, ShieldCheck,
 } from 'lucide-react';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from 'recharts';
 import { GlassCard, GlassCardContent, GlassCardHeader } from '@/components/ui/glass-card';
 import { AnimatedProgress } from '@/components/ui/animated-progress';
@@ -85,6 +87,16 @@ export default function DashboardPage() {
 
   const agentStatuses = liveData ? getAgentStatuses(liveData) : [];
 
+  const innovationScores = liveData?.innovation_score?.scores;
+  const radarData = innovationScores ? [
+    { metric: 'Novelty', value: innovationScores.novelty ?? 0 },
+    { metric: 'Opportunity', value: innovationScores.market_saturation ?? 0 },
+    { metric: 'Funding', value: innovationScores.funding_activity ?? 0 },
+    { metric: 'Research', value: innovationScores.research_maturity ?? 0 },
+    { metric: 'IP Space', value: innovationScores.patent_density ?? 0 },
+    { metric: 'Competition', value: innovationScores.competition_level ?? 0 },
+  ] : [];
+
   const kpiCards = liveData ? [
     { icon: BarChart3, label: 'Market Score', value: String(liveData?.innovation_score?.innovation_score ?? 0), color: 'from-emerald-500 to-teal-500', bg: 'rgba(16,185,129,0.08)' },
     { icon: TrendingUp, label: 'Opportunity Score', value: String(liveData?.opportunities?.opportunity_score ?? 0), color: 'from-indigo-500 to-purple-500', bg: 'rgba(99,102,241,0.08)' },
@@ -93,7 +105,7 @@ export default function DashboardPage() {
   ] : [];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
@@ -134,7 +146,42 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          {/* Row 1: AI Agents + Market Share */}
+          {/* Row 1: Healthcare Mode */}
+          <GlassCard className="overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-cyan-500/8 to-transparent" />
+            <GlassCardContent className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="space-y-2 max-w-2xl">
+                <div className="inline-flex items-center gap-2 text-xs font-medium px-3 py-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 text-emerald-300">
+                  <HeartPulse className="w-3.5 h-3.5" /> Healthcare Mode
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-white">Healthcare-specific intelligence pipeline</h2>
+                  <p className="text-sm text-white/50 mt-1">
+                    Switch into clinical, regulatory, and provider analysis for hospital, pharma, and medtech ideas.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs text-white/55">
+                  <span className="px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.08]">HIPAA checks</span>
+                  <span className="px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.08]">FDA pathway scan</span>
+                  <span className="px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.08]">Clinical evidence</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <div className="hidden md:flex items-center gap-2 text-xs text-white/50">
+                  <ShieldCheck className="w-4 h-4 text-emerald-300" />
+                  <span>Specialized Mode Ready</span>
+                </div>
+                <Link href="/dashboard/healthcare">
+                  <AnimatedButton size="sm">
+                    Open Healthcare Mode
+                    <ChevronRight className="w-4 h-4" />
+                  </AnimatedButton>
+                </Link>
+              </div>
+            </GlassCardContent>
+          </GlassCard>
+
+          {/* Row 2: AI Agents + Market Share */}
           <div className="grid lg:grid-cols-3 gap-5">
             <GlassCard>
               <GlassCardHeader>
@@ -207,8 +254,32 @@ export default function DashboardPage() {
             </GlassCard>
           </div>
 
-          {/* Row 2: Competitor table */}
-          <GlassCard>
+          {/* Row 3: Radar + Competitor table */}
+          <div className="grid lg:grid-cols-5 gap-5">
+            <GlassCard className="lg:col-span-2">
+              <GlassCardHeader>
+                <h3 className="text-base font-semibold text-white">AI Capability Radar</h3>
+              </GlassCardHeader>
+              <GlassCardContent>
+                {radarData.length ? (
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadarChart data={radarData} margin={{ top: 20, right: 40, bottom: 20, left: 40 }}>
+                        <PolarGrid stroke="rgba(255,255,255,0.08)" />
+                        <PolarAngleAxis dataKey="metric" tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 10 }} />
+                        <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                        <Radar name="Score" dataKey="value" stroke="#6366f1" fill="#6366f1" fillOpacity={0.3} strokeWidth={2} />
+                        <Tooltip {...tooltipStyle} />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/40 py-10 text-center">No innovation score breakdown found in the last research run.</p>
+                )}
+              </GlassCardContent>
+            </GlassCard>
+
+            <GlassCard className="lg:col-span-3">
             <GlassCardHeader>
               <h3 className="text-base font-semibold text-white">Top Competitors</h3>
             </GlassCardHeader>
@@ -256,9 +327,10 @@ export default function DashboardPage() {
                 <p className="text-sm text-white/40 py-6 text-center">No competitor data found in the last research run.</p>
               )}
             </GlassCardContent>
-          </GlassCard>
+            </GlassCard>
+          </div>
 
-          {/* Row 3: SWOT + Recent research + Quick actions */}
+          {/* Row 4: SWOT + Recent research + Quick actions */}
           <div className="grid lg:grid-cols-3 gap-5">
             <GlassCard>
               <GlassCardHeader>

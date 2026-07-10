@@ -42,7 +42,7 @@ export default function CompetitorsPage() {
 
   if (competitors.length === 0) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="space-y-8 max-w-7xl mx-auto">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">
             Competitor{" "}
@@ -74,7 +74,7 @@ export default function CompetitorsPage() {
   ];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-8 max-w-7xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold text-white mb-1">
           Competitor{" "}
@@ -134,7 +134,15 @@ export default function CompetitorsPage() {
                 </div>
                 <div className="text-right">
                   <div className="text-sm text-white">{item.marketShare}</div>
-                  <div className="text-xs text-white/45">
+                  <div
+                    className={`text-xs font-medium ${
+                      item.threat.toLowerCase() === "high"
+                        ? "text-red-400"
+                        : item.threat.toLowerCase() === "medium"
+                          ? "text-yellow-400"
+                          : "text-emerald-400"
+                    }`}
+                  >
                     Threat: {item.threat}
                   </div>
                 </div>

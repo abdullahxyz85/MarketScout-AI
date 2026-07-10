@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/ui/logo";
 
-const footerLinks = {};
-
 export function Footer() {
   return (
     <footer className="border-t border-white/10 bg-black/25 backdrop-blur-xl">
@@ -18,28 +16,6 @@ export function Footer() {
               Autonomous AI agents transforming startup ideas into actionable
               market intelligence.
             </p>
-          </div>
-
-          <div className="flex flex-wrap items-start gap-x-10 gap-y-4">
-            {Object.entries(footerLinks).map(([category, links]) => (
-              <div key={category} className="min-w-[110px]">
-                <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-white/60 mb-3">
-                  {category}
-                </h3>
-                <ul className="space-y-2">
-                  {links.map((link) => (
-                    <li key={link}>
-                      <Link
-                        href="#"
-                        className="text-sm text-white/50 hover:text-white transition-colors"
-                      >
-                        {link}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
           </div>
 
           <p className="text-sm text-white/40 lg:text-right">

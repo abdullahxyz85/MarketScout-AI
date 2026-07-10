@@ -1,12 +1,31 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Github } from 'lucide-react';
 import { AnimatedBackground } from '@/components/landing/animated-background';
 import { Logo } from '@/components/ui/logo';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/users/me', { credentials: 'include' })
+      .then((res) => {
+        if (res.ok) {
+          router.replace('/dashboard');
+        } else {
+          setCheckingAuth(false);
+        }
+      })
+      .catch(() => setCheckingAuth(false));
+  }, [router]);
+
+  if (checkingAuth) return null;
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 relative">
       <AnimatedBackground />

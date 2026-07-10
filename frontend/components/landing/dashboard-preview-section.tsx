@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard,
@@ -14,9 +15,11 @@ import {
   AlertCircle,
   Zap,
   ChevronRight,
+  ArrowRight,
 } from 'lucide-react';
 import { AnimatedProgress } from '@/components/ui/animated-progress';
 import { AnimatedBadge, StatusBadge } from '@/components/ui/animated-badge';
+import { AnimatedButton } from '@/components/ui/animated-button';
 
 const sidebarItems = [
   { icon: LayoutDashboard, label: 'Dashboard', active: true },
@@ -34,7 +37,7 @@ const competitors = [
 
 export function DashboardPreviewSection() {
   return (
-    <section className="py-24 relative">
+    <section id="dashboard" className="py-24 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -45,17 +48,24 @@ export function DashboardPreviewSection() {
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
             Powerful <span className="text-gradient">Dashboard</span>
           </h2>
-          <p className="text-lg text-white/60 max-w-2xl mx-auto">
+          <p className="text-lg text-white/60 max-w-2xl mx-auto mb-6">
             Monitor all your research projects, track agent progress, and access insights in real-time.
           </p>
+          <Link href="/dashboard">
+            <AnimatedButton size="md">
+              Open Live Dashboard <ArrowRight className="w-4 h-4" />
+            </AnimatedButton>
+          </Link>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="relative rounded-3xl overflow-hidden backdrop-blur-xl border border-white/10 bg-gradient-to-br from-white/[0.08] to-white/[0.02] shadow-2xl"
-        >
+        <Link href="/dashboard" className="block group">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            whileHover={{ y: -4 }}
+            className="relative rounded-3xl overflow-hidden backdrop-blur-xl border border-white/10 group-hover:border-indigo-500/30 bg-gradient-to-br from-white/[0.08] to-white/[0.02] shadow-2xl transition-colors cursor-pointer"
+          >
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5" />
 
           <div className="grid lg:grid-cols-[240px_1fr]">
@@ -180,7 +190,8 @@ export function DashboardPreviewSection() {
               </div>
             </div>
           </div>
-        </motion.div>
+          </motion.div>
+        </Link>
       </div>
     </section>
   );

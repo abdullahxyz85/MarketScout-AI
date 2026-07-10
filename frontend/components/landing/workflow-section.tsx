@@ -1,18 +1,34 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Lightbulb, Search, Users, BarChart3, TrendingUp, Target, Zap, ShieldAlert, FileText, ArrowDown } from 'lucide-react';
+import { Lightbulb, ArrowDown } from 'lucide-react';
+import { AGENT_SEQUENCE } from '@/lib/agents';
+
+const SHORT_DESCRIPTIONS: Record<string, string> = {
+  'Research Agent': 'Gathers data from 1000s of sources',
+  'Competitor Agent': 'Identifies and profiles competitors',
+  'Scientific Research Agent': 'Surveys academic research maturity',
+  'Patent Intelligence Agent': 'Maps the patent landscape',
+  'Funding Agent': 'Tracks funding rounds & investors',
+  'Trend Agent': 'Detects emerging market shifts',
+  'Research Gap Agent': 'Finds unexplored opportunities',
+  'SWOT Agent': 'Generates SWOT framework',
+  'Opportunity Agent': 'Uncovers hidden opportunities',
+  'Risk Agent': 'Assesses threats and risks',
+  'Innovation Scoring Agent': 'Computes composite innovation score',
+  'Validation Agent': 'Challenges assumptions & evidence',
+  'Strategy Agent': 'Crafts go-to-market strategy',
+  'Report Generator': 'Compiles final intelligence report',
+};
 
 const agents = [
   { name: 'Your Idea', icon: Lightbulb, color: 'from-yellow-400 to-orange-500', desc: 'Describe your startup concept' },
-  { name: 'Research Agent', icon: Search, color: 'from-indigo-500 to-violet-600', desc: 'Gathers data from 1000s of sources' },
-  { name: 'Competitor Agent', icon: Users, color: 'from-purple-500 to-pink-500', desc: 'Identifies and profiles competitors' },
-  { name: 'Market Agent', icon: BarChart3, color: 'from-cyan-500 to-blue-600', desc: 'Calculates market size & growth' },
-  { name: 'Trend Agent', icon: TrendingUp, color: 'from-emerald-500 to-teal-500', desc: 'Detects emerging market shifts' },
-  { name: 'SWOT Agent', icon: Target, color: 'from-orange-500 to-red-500', desc: 'Generates SWOT framework' },
-  { name: 'Opportunity Agent', icon: Zap, color: 'from-blue-500 to-indigo-600', desc: 'Uncovers hidden opportunities' },
-  { name: 'Risk Agent', icon: ShieldAlert, color: 'from-red-500 to-rose-600', desc: 'Assesses threats and risks' },
-  { name: 'Report Generator', icon: FileText, color: 'from-indigo-500 to-purple-600', desc: 'Compiles final intelligence report' },
+  ...AGENT_SEQUENCE.map((a) => ({
+    name: a.name,
+    icon: a.icon,
+    color: a.color,
+    desc: SHORT_DESCRIPTIONS[a.name] ?? '',
+  })),
 ];
 
 export function WorkflowSection() {
@@ -35,7 +51,7 @@ export function WorkflowSection() {
             Multi-Agent <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">AI Workflow</span>
           </h2>
           <p className="text-lg text-white/50 max-w-2xl mx-auto">
-            9 specialized agents work in sequence to build a complete market intelligence report from your idea.
+            14 specialized agents work in sequence to build a complete market intelligence report from your idea.
           </p>
         </motion.div>
 
@@ -47,14 +63,14 @@ export function WorkflowSection() {
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.07 }}
+              transition={{ delay: i * 0.05 }}
               className="flex items-center gap-4 p-4 rounded-2xl border border-white/[0.07] bg-white/[0.03] backdrop-blur-sm"
             >
               <motion.div
                 className={`w-11 h-11 rounded-xl bg-gradient-to-br ${agent.color} flex items-center justify-center flex-shrink-0 shadow-lg`}
                 whileHover={{ rotate: 8, scale: 1.1 }}
                 animate={{ boxShadow: ['0 0 0px rgba(99,102,241,0)', '0 0 20px rgba(99,102,241,0.3)', '0 0 0px rgba(99,102,241,0)'] }}
-                transition={{ duration: 3, repeat: Infinity, delay: i * 0.3 }}
+                transition={{ duration: 3, repeat: Infinity, delay: i * 0.2 }}
               >
                 <agent.icon className="w-5 h-5 text-white" />
               </motion.div>
@@ -82,7 +98,7 @@ export function WorkflowSection() {
                   initial={{ opacity: 0, y: 30, scale: 0.95 }}
                   whileInView={{ opacity: 1, y: 0, scale: 1 }}
                   viewport={{ once: true }}
-                  transition={{ delay: i * 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                  transition={{ delay: i * 0.05, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                   style={{ gridColumn: col + 1 }}
                 >
                   <motion.div
@@ -107,7 +123,7 @@ export function WorkflowSection() {
                           '0 0 0px rgba(99,102,241,0)',
                         ],
                       }}
-                      transition={{ duration: 3.5, repeat: Infinity, delay: i * 0.35 }}
+                      transition={{ duration: 3.5, repeat: Infinity, delay: i * 0.2 }}
                     >
                       <agent.icon className="w-6 h-6 text-white" />
                     </motion.div>

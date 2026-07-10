@@ -11,8 +11,10 @@ import { cn } from '@/lib/utils';
 const navLinks = [
   { href: '#features', label: 'Features' },
   { href: '#agents', label: 'Agents' },
-  { href: '/dashboard', label: 'Dashboard' },
+  { href: '#dashboard', label: 'Dashboard' },
   { href: '#workflow', label: 'How It Works' },
+  { href: '#healthcare', label: 'Healthcare Mode' },
+  { href: '#cta', label: 'Start Now' },
 ];
 
 type CurrentUser = {
