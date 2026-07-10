@@ -5,15 +5,17 @@ from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import ANTI_HALLUCINATION_SUFFIX, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
 
 _SYSTEM = (
+    PROMPT_INJECTION_GUARD +
     "You are a market gap and innovation analyst. Identify unexplored opportunities and "
     "missing features based ONLY on the retrieved sources. "
     "Do not invent gaps not evidenced in the data. "
     "Respond with valid JSON only, no markdown, no extra text."
 )
 _SYSTEM_HC = (
+    PROMPT_INJECTION_GUARD +
     "You are a healthcare market gap analyst. Identify unmet clinical needs and care gaps "
     "based ONLY on retrieved sources. Do not fabricate clinical outcomes or patient data. "
     "Respond with valid JSON only, no markdown, no extra text."

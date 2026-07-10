@@ -39,13 +39,30 @@ def _setup_logging() -> None:
 _setup_logging()
 logger = logging.getLogger("agent-service")
 
+# ── Docs visibility (disabled in production) ──────────────────────────────────
+_IS_PROD = settings.AGENT_AUTH_ENABLED  # reuse auth flag as production indicator
+_DOCS_URL    = None if _IS_PROD else "/docs"
+_REDOC_URL   = None if _IS_PROD else "/redoc"
+_OPENAPI_URL = None if _IS_PROD else "/openapi.json"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # ── Production pre-flight checks ─────────────────────────────────────────
+    if _IS_PROD and not settings.TAVILY_API_KEY:
+        raise RuntimeError(
+            "TAVILY_API_KEY must be set when AGENT_AUTH_ENABLED=true (production mode)."
+        )
+    if _IS_PROD and not settings.JWT_SECRET:
+        raise RuntimeError("JWT_SECRET must be set when AGENT_AUTH_ENABLED=true.")
+
     # Warm up: pre-compile the LangGraph pipeline at startup
     from orchestrator.pipeline import get_pipeline
     get_pipeline()
-    logger.info("Agent service started — pipeline compiled and ready")
+    logger.info(
+        "Agent service started — production=%s, auth=%s, docs=%s",
+        _IS_PROD, settings.AGENT_AUTH_ENABLED, "disabled" if _IS_PROD else "enabled",
+    )
     yield
     logger.info("Agent service shutting down")
 
@@ -58,9 +75,9 @@ app = FastAPI(
         "Powered by AMD Instinct GPUs via Fireworks AI. "
         "Orchestrated with LangGraph."
     ),
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
+    docs_url=_DOCS_URL,
+    redoc_url=_REDOC_URL,
+    openapi_url=_OPENAPI_URL,
     lifespan=lifespan,
 )
 
@@ -68,8 +85,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in settings.CORS_ORIGINS.split(",")],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Cookie"],
 )
 
 app.include_router(router)

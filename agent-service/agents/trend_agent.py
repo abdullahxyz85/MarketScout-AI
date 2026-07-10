@@ -5,15 +5,17 @@ from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import ANTI_HALLUCINATION_SUFFIX, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
 
 _SYSTEM = (
+    PROMPT_INJECTION_GUARD +
     "You are a market trend analyst. Identify and analyze ONLY trends, technologies, "
     "and regulatory shifts found in the provided sources. "
     "Do not describe trends not supported by the retrieved data. "
     "Respond with valid JSON only, no markdown, no extra text."
 )
 _SYSTEM_HC = (
+    PROMPT_INJECTION_GUARD +
     "You are a healthcare market trend analyst. Identify ONLY trends found in the provided "
     "sources: clinical adoption, FDA/CMS shifts, reimbursement changes, digital health tech. "
     "Do not fabricate regulatory approvals or clinical data. "

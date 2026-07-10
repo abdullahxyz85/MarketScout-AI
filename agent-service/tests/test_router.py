@@ -25,12 +25,14 @@ def test_start_research_rejects_short_idea():
 
 
 def test_unknown_job_status_returns_404():
-    res = client.get("/research/does-not-exist/status")
+    """A valid UUID that doesn't correspond to any job should return 404."""
+    res = client.get(f"/research/{uuid.uuid4()}/status")
     assert res.status_code == 404
 
 
 def test_unknown_job_stream_returns_404():
-    res = client.get("/research/does-not-exist/stream")
+    """A valid UUID that doesn't correspond to any job should return 404."""
+    res = client.get(f"/research/{uuid.uuid4()}/stream")
     assert res.status_code == 404
 
 

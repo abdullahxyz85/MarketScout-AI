@@ -5,15 +5,17 @@ from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import ANTI_HALLUCINATION_SUFFIX, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
 
 _SYSTEM = (
+    PROMPT_INJECTION_GUARD +
     "You are a venture capital and startup funding analyst. Analyze ONLY the provided "
     "funding data and return structured investment activity data. "
     "Do not invent funding rounds, amounts, or investor names not found in the sources. "
     "Respond with valid JSON only, no markdown, no extra text."
 )
 _SYSTEM_HC = (
+    PROMPT_INJECTION_GUARD +
     "You are a healthcare venture capital analyst. Analyze ONLY the provided funding data "
     "for digital health, medtech, and biotech. Do not fabricate funding rounds or amounts. "
     "Respond with valid JSON only, no markdown, no extra text."

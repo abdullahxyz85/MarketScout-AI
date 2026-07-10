@@ -3,11 +3,12 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import uuid
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.responses import Response, StreamingResponse
 
 from orchestrator.pipeline import cleanup_queue, get_queue, register_queue, run_pipeline
@@ -15,8 +16,49 @@ from schemas.models import AskRequest, JobResponse, JobStatus, ResearchRequest, 
 from services import memory_service, report_generator
 from services.auth_guard import _DEV_USER, require_auth
 from services.compare_service import compare_competitors, compare_ideas
+from services import rate_limiter
 
 logger = logging.getLogger("agent-service.router")
+
+# ── UUID validation ────────────────────────────────────────────────────────────
+_UUID_RE = re.compile(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    re.IGNORECASE,
+)
+
+def _validate_uuid(value: str, field: str = "job_id") -> str:
+    if not _UUID_RE.match(value):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid {field} format. Must be a UUID.",
+        )
+    return value
+
+
+# ── Secure error helper ────────────────────────────────────────────────────────
+def _internal_error(exc: Exception, corr_id: str) -> HTTPException:
+    """Log the real exception server-side and return a safe generic error to the client."""
+    logger.exception("internal error corr_id=%s", corr_id)
+    return HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail=f"An internal error occurred. Reference: {corr_id}",
+    )
+
+
+# ── Job ownership helper ───────────────────────────────────────────────────────
+def _assert_owns_job(job: Dict[str, Any], auth_user_id: str) -> None:
+    """
+    Raise HTTP 404 if the caller does not own this job.
+
+    We return 404 (not 403) to avoid revealing whether the job exists for
+    another user. In dev mode (_DEV_USER), ownership is not enforced.
+    """
+    from config import settings
+    if not settings.AGENT_AUTH_ENABLED or auth_user_id == _DEV_USER:
+        return
+    owner = job.get("owner_user_id")
+    if owner is not None and owner != auth_user_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
 
 def _sse_stream(queue: asyncio.Queue) -> StreamingResponse:
     """Wrap an asyncio.Queue into a StreamingResponse with text/event-stream content type."""
@@ -32,10 +74,10 @@ def _sse_stream(queue: asyncio.Queue) -> StreamingResponse:
     return StreamingResponse(
         _generate(),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        headers={"Cache-Control": "no-cache, no-store", "X-Accel-Buffering": "no"},
     )
 
-# In-memory job registry: job_id -> { status, created_at, idea, industry, result }
+# In-memory job registry: job_id → { status, created_at, idea, industry, result, owner_user_id }
 _jobs: Dict[str, Dict[str, Any]] = {}
 
 router = APIRouter()
@@ -101,11 +143,10 @@ async def _pipeline_task(
             "result": result_payload,
         })
 
-        # Persist result: prefer auth_user_id from JWT (production),
-        # fall back to request.user_id from body (dev mode only).
+        # Persist result using auth_user_id from JWT token (never request body)
         effective_user_id = (
             auth_user_id if auth_user_id and auth_user_id != _DEV_USER
-            else request.user_id
+            else None
         )
         if effective_user_id:
             asyncio.create_task(
@@ -125,7 +166,7 @@ async def _pipeline_task(
             "progress": 0,
             "current_agent": "Error",
             "done": True,
-            "error": str(exc),
+            "error": "An internal error occurred. Please try again.",
         })
     finally:
         # Delay cleanup on a separate task so a slow/late SSE reconnect can still
@@ -150,6 +191,9 @@ async def start_research(
     Start a new multi-agent market research job.
     Returns a job_id that can be used to stream progress via SSE.
     """
+    # Rate-limit expensive research jobs
+    await rate_limiter.check_research_start(auth_user_id)
+
     job_id = str(uuid.uuid4())
     queue = register_queue(job_id)
     created_at = datetime.utcnow().isoformat()
@@ -160,6 +204,7 @@ async def start_research(
         "idea": request.idea,
         "industry": request.industry,
         "result": None,
+        "owner_user_id": auth_user_id,  # always set from auth token, never from body
     }
 
     background_tasks.add_task(_pipeline_task, job_id, request, queue, auth_user_id)
@@ -168,22 +213,24 @@ async def start_research(
 
 
 @router.get("/research/{job_id}/stream", tags=["research"])
-async def stream_research_progress(job_id: str, _: str = Depends(require_auth)):
+async def stream_research_progress(job_id: str, auth_user_id: str = Depends(require_auth)):
     """
     Server-Sent Events (SSE) endpoint. Streams agent progress events in real time.
     Each event: { progress, current_agent, status, done, result? }
     The stream closes automatically when done=true.
     """
+    _validate_uuid(job_id)
     if job_id not in _jobs:
         raise HTTPException(status_code=404, detail="Job not found")
 
     job = _jobs[job_id]
+    _assert_owns_job(job, auth_user_id)
 
     if job["status"] == JobStatus.COMPLETED and job["result"]:
         async def _already_done():
             yield f"data: {json.dumps({'progress': 100, 'current_agent': 'Complete', 'done': True})}\n\n"
         return StreamingResponse(_already_done(), media_type="text/event-stream",
-                                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+                                 headers={"Cache-Control": "no-cache, no-store", "X-Accel-Buffering": "no"})
 
     queue = get_queue(job_id)
     if not queue:
@@ -193,23 +240,28 @@ async def stream_research_progress(job_id: str, _: str = Depends(require_auth)):
 
 
 @router.get("/research/{job_id}/status", response_model=JobResponse, tags=["research"])
-async def get_job_status(job_id: str, _: str = Depends(require_auth)):
+async def get_job_status(job_id: str, auth_user_id: str = Depends(require_auth)):
     """Return the current status of a research job."""
+    _validate_uuid(job_id)
     job = _jobs.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
+    _assert_owns_job(job, auth_user_id)
     return JobResponse(job_id=job_id, status=job["status"], created_at=job["created_at"])
 
 
 @router.get("/research/{job_id}/result", tags=["research"])
-async def get_research_result(job_id: str, _: str = Depends(require_auth)):
+async def get_research_result(job_id: str, auth_user_id: str = Depends(require_auth)):
     """
     Return the complete research result for a completed job.
     Returns HTTP 202 if the job is still in progress.
     """
+    _validate_uuid(job_id)
     job = _jobs.get(job_id)
+    if job:
+        _assert_owns_job(job, auth_user_id)
     if not job:
-        result_from_db = await memory_service.get_research_result(job_id)
+        result_from_db = await memory_service.get_research_result(job_id, owner_user_id=auth_user_id)
         if result_from_db:
             return result_from_db
         raise HTTPException(status_code=404, detail="Job not found")
@@ -224,43 +276,56 @@ async def get_research_result(job_id: str, _: str = Depends(require_auth)):
 
 
 @router.get("/research/{job_id}/report/pdf", tags=["research"])
-async def download_pdf_report(job_id: str, _: str = Depends(require_auth)):
+async def download_pdf_report(job_id: str, auth_user_id: str = Depends(require_auth)):
     """Generate and return a PDF market intelligence report for a completed job."""
+    _validate_uuid(job_id)
+    await rate_limiter.check_pdf(auth_user_id)
+    corr_id = str(uuid.uuid4())
     job = _jobs.get(job_id)
+    if job:
+        _assert_owns_job(job, auth_user_id)
     if job and job["status"] == JobStatus.COMPLETED and job["result"]:
         result = job["result"]
     else:
-        # In-memory job registry is wiped on every service restart/reload;
-        # fall back to the persisted result so PDFs stay downloadable afterward.
-        result = await memory_service.get_research_result(job_id)
+        result = await memory_service.get_research_result(job_id, owner_user_id=auth_user_id)
         if not result:
             raise HTTPException(status_code=404, detail="Completed job not found")
 
-    pdf_bytes = report_generator.generate_pdf_report(result)
+    try:
+        pdf_bytes = report_generator.generate_pdf_report(result)
+    except Exception as exc:
+        corr_id = str(uuid.uuid4())
+        raise _internal_error(exc, corr_id)
+    safe_job_id = job_id.replace('/', '').replace('..', '')[:8]
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="marketscout_{job_id[:8]}.pdf"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="marketscout_{safe_job_id}.pdf"',
+            "Cache-Control": "private, no-store",
+        },
     )
 
 
 @router.post("/research/{job_id}/scenario", tags=["research"])
-async def simulate_scenario(job_id: str, request: ScenarioRequest, _: str = Depends(require_auth)):
+async def simulate_scenario(job_id: str, request: ScenarioRequest, auth_user_id: str = Depends(require_auth)):
     """
     Run a 'what-if' scenario simulation against a completed research result.
-    Analyzes impact on market opportunity, competitive positioning, revenue, risk, and timeline.
     """
+    _validate_uuid(job_id)
+    await rate_limiter.check_scenario(auth_user_id)
     job = _jobs.get(job_id)
+    if job:
+        _assert_owns_job(job, auth_user_id)
     base_result = (job or {}).get("result") if job else None
 
     if not base_result:
-        base_result = await memory_service.get_research_result(job_id)
+        base_result = await memory_service.get_research_result(job_id, owner_user_id=auth_user_id)
 
     if not base_result:
         raise HTTPException(status_code=404, detail="Base research result not found")
 
     from agents.strategy_agent import run_scenario_simulation
-
     result = await run_scenario_simulation(
         base_result=base_result,
         scenario=request.scenario.model_dump(exclude_none=True),
@@ -334,61 +399,67 @@ async def compare_two_competitors(
 
 # ── Shared helper ─────────────────────────────────────────────────────────────
 
-async def _get_completed_state(job_id: str) -> Dict[str, Any]:
-    """Retrieve a completed job's full pipeline state (in-memory first, then Supabase)."""
+async def _get_completed_state(job_id: str, auth_user_id: str) -> Dict[str, Any]:
+    """Retrieve a completed job's full pipeline state with ownership enforcement."""
+    _validate_uuid(job_id)
     job = _jobs.get(job_id)
-    if job and job.get("result"):
-        return job["result"]
-    result = await memory_service.get_research_result(job_id)
+    if job:
+        _assert_owns_job(job, auth_user_id)
+        if job.get("result"):
+            return job["result"]
+    result = await memory_service.get_research_result(job_id, owner_user_id=auth_user_id)
     if result:
         return result
     raise HTTPException(
         status_code=404,
-        detail=f"Completed job '{job_id}' not found. Run a market research first.",
+        detail="Completed job not found. Run a market research first.",
     )
 
 
 # ── Startup Kit endpoints (LLM-based, on-demand) ──────────────────────────────
 
 @router.get("/research/{job_id}/business-plan", tags=["startup-kit"])
-async def get_business_plan(job_id: str, _: str = Depends(require_auth)):
+async def get_business_plan(job_id: str, auth_user_id: str = Depends(require_auth)):
     """Generate a comprehensive 15-section business plan from a completed research job."""
+    await rate_limiter.check_llm_doc(auth_user_id, "business-plan")
     from agents.business_plan_agent import run as _run
-    state = await _get_completed_state(job_id)
+    state = await _get_completed_state(job_id, auth_user_id)
     return await _run(state)
 
 
 @router.get("/research/{job_id}/investor-memo", tags=["startup-kit"])
-async def get_investor_memo(job_id: str, _: str = Depends(require_auth)):
+async def get_investor_memo(job_id: str, auth_user_id: str = Depends(require_auth)):
     """Generate a VC-style investor memo with verdict from a completed research job."""
+    await rate_limiter.check_llm_doc(auth_user_id, "investor-memo")
     from agents.investor_agent import run as _run
-    state = await _get_completed_state(job_id)
+    state = await _get_completed_state(job_id, auth_user_id)
     return await _run(state)
 
 
 @router.get("/research/{job_id}/pitch-deck", tags=["startup-kit"])
-async def get_pitch_deck(job_id: str, _: str = Depends(require_auth)):
+async def get_pitch_deck(job_id: str, auth_user_id: str = Depends(require_auth)):
     """Generate a 10-slide structured pitch deck from a completed research job."""
+    await rate_limiter.check_llm_doc(auth_user_id, "pitch-deck")
     from agents.pitch_agent import run as _run
-    state = await _get_completed_state(job_id)
+    state = await _get_completed_state(job_id, auth_user_id)
     return await _run(state)
 
 
 # ── Quality & Evidence endpoints (deterministic, no LLM) ─────────────────────
 
 @router.get("/research/{job_id}/quality-report", tags=["quality"])
-async def get_quality_report(job_id: str, _: str = Depends(require_auth)):
+async def get_quality_report(job_id: str, auth_user_id: str = Depends(require_auth)):
     """Return a deterministic pipeline quality report (grade A-F, hallucination risk, etc.)."""
     from services.quality_report import generate
-    state = await _get_completed_state(job_id)
+    state = await _get_completed_state(job_id, auth_user_id)
     return generate(state).to_dict()
 
 
 @router.get("/research/{job_id}/evidence", tags=["quality"])
-async def get_evidence(job_id: str, _: str = Depends(require_auth)):
+async def get_evidence(job_id: str, auth_user_id: str = Depends(require_auth)):
     """Extract and summarise all grounded evidence claims from a completed research job."""
     from services.evidence_engine import extract_all, summarise
-    state = await _get_completed_state(job_id)
+    state = await _get_completed_state(job_id, auth_user_id)
     evidences = extract_all(state)
     return {
         "evidences": [e.to_dict() for e in evidences],
@@ -398,10 +469,10 @@ async def get_evidence(job_id: str, _: str = Depends(require_auth)):
 
 
 @router.get("/research/{job_id}/sources", tags=["quality"])
-async def get_source_credibility(job_id: str, _: str = Depends(require_auth)):
-    """Rank all sources from a completed research job by credibility (1–5 stars)."""
+async def get_source_credibility(job_id: str, auth_user_id: str = Depends(require_auth)):
+    """Rank all sources from a completed research job by credibility (1\u20135 stars)."""
     from services.source_ranker import rank as _rank
-    state = await _get_completed_state(job_id)
+    state = await _get_completed_state(job_id, auth_user_id)
     seen: set = set()
     ranked = []
     for val in state.values():
@@ -432,12 +503,13 @@ async def get_source_credibility(job_id: str, _: str = Depends(require_auth)):
 # ── Ask Your Research endpoint (LLM Q&A over pipeline results) ───────────────
 
 @router.post("/research/{job_id}/ask", tags=["ask"])
-async def ask_research(job_id: str, request: AskRequest, _: str = Depends(require_auth)):
+async def ask_research(job_id: str, request: AskRequest, auth_user_id: str = Depends(require_auth)):
     """
     Ask a natural-language question about a completed research job.
-    The LLM answers strictly from the pipeline results — no hallucination.
+    The LLM answers strictly from the pipeline results \u2014 no hallucination.
     """
-    state = await _get_completed_state(job_id)
+    await rate_limiter.check_ask(auth_user_id)
+    state = await _get_completed_state(job_id, auth_user_id)
     from services.fireworks_client import call_llm, FireworksModel
 
     idea = state.get("idea", "")

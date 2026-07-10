@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/logo";
 import { AnimatedBackground } from "@/components/landing/animated-background";
 import { ResearchProvider, useResearch } from "@/lib/research-context";
+import { clearLastResearch } from "@/lib/research-store";
 
 const sidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard",      href: "/dashboard" },
@@ -218,6 +219,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   const handleLogout = async () => {
+    clearLastResearch(); // Remove research data from localStorage on logout
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     router.replace("/login");
   };

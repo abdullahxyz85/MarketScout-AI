@@ -5,14 +5,16 @@ from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import ANTI_HALLUCINATION_SUFFIX, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
 
 _SYSTEM = (
+    PROMPT_INJECTION_GUARD +
     "You are a scientific research analyst. Summarize ONLY the research found in the "
     "provided sources. Do not invent paper titles, authors, or findings. "
     "Respond with valid JSON only, no markdown, no extra text."
 )
 _SYSTEM_HC = (
+    PROMPT_INJECTION_GUARD +
     "You are a clinical and biomedical research analyst. Report ONLY clinical trials, "
     "studies, and guidelines found in the provided sources. "
     "Do not fabricate trial results, publication titles, or clinical outcomes. "

@@ -5,14 +5,16 @@ from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import ANTI_HALLUCINATION_SUFFIX, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
 
 _SYSTEM = (
+    PROMPT_INJECTION_GUARD +
     "You are a senior market research analyst. Analyze ONLY the provided web data and return "
     "a structured JSON report. Base every claim on the retrieved sources. "
     "Respond with valid JSON only, no markdown, no extra text."
 )
 _SYSTEM_HC = (
+    PROMPT_INJECTION_GUARD +
     "You are a healthcare market research analyst specializing in medical technology, "
     "digital health, pharma, and clinical innovations. Analyze ONLY the provided web data "
     "including regulatory context, payer dynamics, and clinical adoption factors. "

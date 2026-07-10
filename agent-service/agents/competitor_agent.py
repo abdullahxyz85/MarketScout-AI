@@ -5,14 +5,16 @@ from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import ANTI_HALLUCINATION_SUFFIX, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
 
 _SYSTEM = (
+    PROMPT_INJECTION_GUARD +
     "You are a competitive intelligence analyst. Given web data, identify and analyze "
     "the key competitors to the startup idea. Base every claim on the retrieved sources. "
     "Respond with valid JSON only, no markdown."
 )
 _SYSTEM_HC = (
+    PROMPT_INJECTION_GUARD +
     "You are a competitive intelligence analyst specializing in healthcare. Identify "
     "hospital systems, digital health startups, medical device companies, and pharma "
     "players competing in this space. Base every claim on the retrieved sources. "

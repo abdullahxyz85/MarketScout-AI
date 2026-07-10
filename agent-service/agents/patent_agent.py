@@ -5,14 +5,16 @@ from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import ANTI_HALLUCINATION_SUFFIX, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
 
 _SYSTEM = (
+    PROMPT_INJECTION_GUARD +
     "You are a patent intelligence analyst. Analyze ONLY the provided patent data and return "
     "a structured JSON report. Base every patent claim on the retrieved sources. "
     "Respond with valid JSON only, no markdown, no extra text."
 )
 _SYSTEM_HC = (
+    PROMPT_INJECTION_GUARD +
     "You are a biomedical patent analyst. Assess the IP landscape for this healthcare "
     "startup strictly from retrieved sources. Do not invent patent numbers, titles, or holders. "
     "Respond with valid JSON only, no markdown."
