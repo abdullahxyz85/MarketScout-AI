@@ -31,12 +31,12 @@ async def run(
     SWOT Agent: synthesizes research, competitor, trend, and gap data into a comprehensive
     Strengths, Weaknesses, Opportunities, and Threats analysis.
     """
-    research_summary = (research_data or {}).get("summary", "")
+    research_summary = (research_data or {}).get("summary") or ""
     competitors = [(c.get("name", "") + ": " + c.get("description", ""))
-                   for c in (competitor_data or {}).get("competitors", [])[:4]]
-    trends = [(t.get("name", "")) for t in (trend_data or {}).get("trends", [])[:4]]
-    opportunities = (gap_data or {}).get("unexplored_opportunities", [])[:3]
-    blind_spots = (gap_data or {}).get("competitor_blind_spots", [])[:2]
+                   for c in ((competitor_data or {}).get("competitors") or [])[:4]]
+    trends = [t.get("name", "") for t in ((trend_data or {}).get("trends") or [])[:4]]
+    opportunities = ((gap_data or {}).get("unexplored_opportunities") or [])[:3]
+    blind_spots = ((gap_data or {}).get("competitor_blind_spots") or [])[:2]
 
     prompt = f"""Startup Idea: {idea}
 Industry: {industry}

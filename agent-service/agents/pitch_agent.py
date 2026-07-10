@@ -93,43 +93,43 @@ async def run(state: Dict[str, Any]) -> Dict[str, Any]:
     trends           = state.get("trends")          or {}
     patents          = state.get("patents")         or {}
 
-    market_size      = research.get("market_size_estimate", "Unknown")
-    growth_rate      = research.get("growth_rate", "Unknown")
-    market_overview  = research.get("market_overview", "")
-    pain_points      = research.get("pain_points", [])[:3]
-    target_customers = research.get("target_customers", [])[:2]
+    market_size      = research.get("market_size_estimate") or "Unknown"
+    growth_rate      = research.get("growth_rate") or "Unknown"
+    market_overview  = research.get("market_overview") or ""
+    pain_points      = (research.get("pain_points") or [])[:3]
+    target_customers = (research.get("target_customers") or [])[:2]
 
-    comp_landscape   = competitors.get("competitive_landscape", "")
-    saturation       = competitors.get("market_saturation_score", 50)
-    comp_list        = [c.get("name", "") for c in competitors.get("competitors", [])[:4]]
-    differentiation  = competitors.get("differentiation_opportunities", [])[:3]
+    comp_landscape   = competitors.get("competitive_landscape") or ""
+    saturation       = competitors.get("market_saturation_score") or 50
+    comp_list        = [c.get("name", "") for c in (competitors.get("competitors") or [])[:4]]
+    differentiation  = (competitors.get("differentiation_opportunities") or [])[:3]
 
-    opp_score        = opportunities.get("opportunity_score", "N/A")
-    market_gaps      = opportunities.get("market_gaps", [])[:3]
-    target_segs      = opportunities.get("target_segments", [])[:2]
+    opp_score        = opportunities.get("opportunity_score") or "N/A"
+    market_gaps      = (opportunities.get("market_gaps") or [])[:3]
+    target_segs      = (opportunities.get("target_segments") or [])[:2]
 
-    risk_level       = risks.get("overall_risk_level", "medium")
+    risk_level       = risks.get("overall_risk_level") or "medium"
 
-    gtm              = strategy.get("go_to_market", "")
-    pricing          = strategy.get("pricing_strategy", "")
-    success_metrics  = strategy.get("success_metrics", [])[:4]
-    partnerships     = strategy.get("key_partnerships", [])[:3]
+    gtm              = strategy.get("go_to_market") or ""
+    pricing          = strategy.get("pricing_strategy") or ""
+    success_metrics  = (strategy.get("success_metrics") or [])[:4]
+    partnerships     = (strategy.get("key_partnerships") or [])[:3]
 
-    confidence       = validation.get("confidence_level", "medium")
-    recommendation   = validation.get("recommendation", "")
-    experiments      = validation.get("validation_experiments", [])[:3]
+    confidence       = validation.get("confidence_level") or "medium"
+    recommendation   = validation.get("recommendation") or ""
+    experiments      = (validation.get("validation_experiments") or [])[:3]
 
-    funding_activity = funding.get("funding_activity_score", 50)
-    avg_valuation    = funding.get("average_valuation_range", "Unknown")
-    top_investors    = funding.get("top_investors", [])[:3]
+    funding_activity = funding.get("funding_activity_score") or 50
+    avg_valuation    = funding.get("average_valuation_range") or "Unknown"
+    top_investors    = (funding.get("top_investors") or [])[:3]
 
-    inno_score       = innovation_score.get("innovation_score", "N/A")
-    inno_explanation = innovation_score.get("score_explanation", "")
+    inno_score       = innovation_score.get("innovation_score") or "N/A"
+    inno_explanation = innovation_score.get("score_explanation") or ""
 
-    strengths        = swot.get("strengths", [])[:3]
-    opps_swot        = swot.get("opportunities", [])[:2]
-    market_trends    = trends.get("trends", [])[:3]
-    ip_rec           = patents.get("ip_strategy_recommendation", "")
+    strengths        = (swot.get("strengths") or [])[:3]
+    opps_swot        = (swot.get("opportunities") or [])[:2]
+    market_trends    = (trends.get("trends") or [])[:3]
+    ip_rec           = patents.get("ip_strategy_recommendation") or ""
 
     healthcare_context = ""
     if healthcare_mode:

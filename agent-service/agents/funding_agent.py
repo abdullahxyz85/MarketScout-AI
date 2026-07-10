@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import ANTI_HALLUCINATION_SUFFIX, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_for_search, truncate_sources
 
 _SYSTEM = (
     "You are a venture capital and startup funding analyst. Analyze ONLY the provided "
@@ -25,14 +25,15 @@ async def run(idea: str, industry: str, healthcare_mode: bool = False) -> Dict[s
     Funding Agent: researches recent funding rounds, investor activity, and capital
     flow trends in the target market to assess funding attractiveness.
     """
+    search_idea = truncate_for_search(idea)
     queries = [
-        f"{idea} {industry} startup funding round 2024 2025 venture capital",
+        f"{search_idea} {industry} startup funding round 2024 2025 venture capital",
         f"{industry} VC investment funding deals Series A B 2024",
     ]
     if healthcare_mode:
-        queries.append(f"{idea} digital health medtech funding investment 2024")
+        queries.append(f"{search_idea} digital health medtech funding investment 2024")
     else:
-        queries.append(f"{idea} startup raised funding investors crunchbase 2024")
+        queries.append(f"{search_idea} startup raised funding investors crunchbase 2024")
 
     raw_results = await asyncio.gather(
         *[search(q, max_results=5) for q in queries[:3]],
@@ -73,13 +74,13 @@ Return a JSON object with exactly this structure:
   "unsupported_claims": ["list of field names not found in sources, or empty array"]
 }}
 funding_activity_score is 0-100 (100 = very active funding environment).
-{suffix}""".format(suffix=ANTI_HALLUCINATION_SUFFIX)
+{ANTI_HALLUCINATION_SUFFIX}"""
 
     raw = await call_llm(
         prompt=prompt,
         system_prompt=_SYSTEM_HC if healthcare_mode else _SYSTEM,
         model=FireworksModel.DEEPSEEK_V4_FLASH,
-        max_tokens=1500,
+        max_tokens=2500,
     )
     result = parse_json_response(raw)
     result["sources"] = extract_source_urls(search_results)

@@ -84,6 +84,11 @@ def _repair_truncated_json(text: str) -> Dict[str, Any] | None:
     return None
 
 
+def truncate_for_search(text: str, max_length: int = 200) -> str:
+    """Truncate free-form text before folding it into a Tavily query (400-char query limit)."""
+    return text[:max_length].rsplit(" ", 1)[0] if len(text) > max_length else text
+
+
 def truncate_sources(results: List[Dict[str, Any]], max_content: int = 500) -> List[Dict[str, Any]]:
     """Truncate web search result content to avoid excessive token usage."""
     return [

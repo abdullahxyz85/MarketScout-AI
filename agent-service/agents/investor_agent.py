@@ -64,44 +64,44 @@ async def run(state: Dict[str, Any]) -> Dict[str, Any]:
     swot             = state.get("swot")           or {}
     trends           = state.get("trends")         or {}
 
-    market_size      = research.get("market_size_estimate", "Unknown")
-    growth_rate      = research.get("growth_rate", "Unknown")
-    market_overview  = research.get("market_overview", "")
-    pain_points      = research.get("pain_points", [])[:3]
+    market_size      = research.get("market_size_estimate") or "Unknown"
+    growth_rate      = research.get("growth_rate") or "Unknown"
+    market_overview  = research.get("market_overview") or ""
+    pain_points      = (research.get("pain_points") or [])[:3]
 
-    saturation       = competitors.get("market_saturation_score", 50)
-    comp_landscape   = competitors.get("competitive_landscape", "")
-    differentiation  = competitors.get("differentiation_opportunities", [])[:3]
+    saturation       = competitors.get("market_saturation_score") or 50
+    comp_landscape   = competitors.get("competitive_landscape") or ""
+    differentiation  = (competitors.get("differentiation_opportunities") or [])[:3]
 
-    opp_score        = opportunities.get("opportunity_score", "N/A")
-    blue_ocean       = opportunities.get("blue_ocean_potential", "")
-    market_gaps      = opportunities.get("market_gaps", [])[:3]
+    opp_score        = opportunities.get("opportunity_score") or "N/A"
+    blue_ocean       = opportunities.get("blue_ocean_potential") or ""
+    market_gaps      = (opportunities.get("market_gaps") or [])[:3]
 
-    risk_level       = risks.get("overall_risk_level", "medium")
-    risk_score       = risks.get("risk_score", 50)
-    critical_risks   = risks.get("critical_risks", [])[:3]
+    risk_level       = risks.get("overall_risk_level") or "medium"
+    risk_score       = risks.get("risk_score") or 50
+    critical_risks   = (risks.get("critical_risks") or [])[:3]
 
-    gtm              = strategy.get("go_to_market", "")
-    pricing          = strategy.get("pricing_strategy", "")
-    strategic_recs   = strategy.get("strategic_recommendations", [])[:3]
+    gtm              = strategy.get("go_to_market") or ""
+    pricing          = strategy.get("pricing_strategy") or ""
+    strategic_recs   = (strategy.get("strategic_recommendations") or [])[:3]
 
-    confidence       = validation.get("confidence_level", "medium")
-    recommendation   = validation.get("recommendation", "")
-    challenged       = validation.get("challenged_assumptions", [])[:2]
+    confidence       = validation.get("confidence_level") or "medium"
+    recommendation   = validation.get("recommendation") or ""
+    challenged       = (validation.get("challenged_assumptions") or [])[:2]
 
-    funding_activity = funding.get("funding_activity_score", 50)
-    top_investors    = funding.get("top_investors", [])[:5]
-    avg_valuation    = funding.get("average_valuation_range", "Unknown")
-    funding_trend    = funding.get("funding_trend", "")
-    recent_rounds    = funding.get("recent_funding_rounds", [])[:3]
+    funding_activity = funding.get("funding_activity_score") or 50
+    top_investors    = (funding.get("top_investors") or [])[:5]
+    avg_valuation    = funding.get("average_valuation_range") or "Unknown"
+    funding_trend    = funding.get("funding_trend") or ""
+    recent_rounds    = (funding.get("recent_funding_rounds") or [])[:3]
 
-    inno_score       = innovation_score.get("innovation_score", "N/A")
-    grade            = innovation_score.get("grade", "N/A")
-    inno_explanation = innovation_score.get("score_explanation", "")
+    inno_score       = innovation_score.get("innovation_score") or "N/A"
+    grade            = innovation_score.get("grade") or "N/A"
+    inno_explanation = innovation_score.get("score_explanation") or ""
 
-    strengths        = swot.get("strengths", [])[:3]
-    weaknesses       = swot.get("weaknesses", [])[:3]
-    market_trends    = trends.get("trends", [])[:3]
+    strengths        = (swot.get("strengths") or [])[:3]
+    weaknesses       = (swot.get("weaknesses") or [])[:3]
+    market_trends    = (trends.get("trends") or [])[:3]
 
     healthcare_context = ""
     if healthcare_mode:

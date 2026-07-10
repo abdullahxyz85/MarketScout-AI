@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import ANTI_HALLUCINATION_SUFFIX, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_for_search, truncate_sources
 
 _SYSTEM = (
     "You are a market gap and innovation analyst. Identify unexplored opportunities and "
@@ -31,13 +31,14 @@ async def run(
     Research Gap Agent: compares competitors, publications, and GitHub projects to identify
     unexplored opportunities, missing features, and emerging niches in the target market.
     """
+    search_idea = truncate_for_search(idea)
     queries = [
-        f"{idea} {industry} market gap unmet need missing solution problem",
-        f"{idea} {industry} what is missing limitations current solutions",
-        f"{industry} github open source projects {idea} innovation",
+        f"{search_idea} {industry} market gap unmet need missing solution problem",
+        f"{search_idea} {industry} what is missing limitations current solutions",
+        f"{industry} github open source projects {search_idea} innovation",
     ]
     if healthcare_mode:
-        queries.append(f"{idea} unmet clinical need care gap patient outcome improvement")
+        queries.append(f"{search_idea} unmet clinical need care gap patient outcome improvement")
 
     raw_results = await asyncio.gather(
         *[search(q, max_results=4) for q in queries[:4]],
@@ -82,13 +83,13 @@ Return a JSON object with exactly this structure:
   "unsupported_claims": ["list of field names not found in sources, or empty array"]
 }}
 novelty_score is 0-100 (100 = highly novel, no similar solution exists).
-{suffix}""".format(suffix=ANTI_HALLUCINATION_SUFFIX)
+{ANTI_HALLUCINATION_SUFFIX}"""
 
     raw = await call_llm(
         prompt=prompt,
         system_prompt=_SYSTEM_HC if healthcare_mode else _SYSTEM,
         model=FireworksModel.DEEPSEEK_V4_FLASH,
-        max_tokens=1500,
+        max_tokens=2500,
     )
     result = parse_json_response(raw)
     result["sources"] = extract_source_urls(search_results)

@@ -31,12 +31,12 @@ async def run(
     Validation Agent: acts as a critical reviewer by challenging assumptions, identifying
     weak evidence, highlighting business risks, and suggesting validation experiments.
     """
-    market_overview = (research_data or {}).get("market_overview", "")
-    opportunity_score = (opportunity_data or {}).get("opportunity_score", 50)
-    innovation_score = (innovation_score_data or {}).get("innovation_score", 50)
-    blue_ocean = (opportunity_data or {}).get("blue_ocean_potential", "")
-    saturation = (competitor_data or {}).get("market_saturation_score", 50)
-    differentiation = (competitor_data or {}).get("differentiation_opportunities", [])
+    market_overview = (research_data or {}).get("market_overview") or ""
+    opportunity_score = (opportunity_data or {}).get("opportunity_score") or 50
+    innovation_score = (innovation_score_data or {}).get("innovation_score") or 50
+    blue_ocean = (opportunity_data or {}).get("blue_ocean_potential") or ""
+    saturation = (competitor_data or {}).get("market_saturation_score") or 50
+    differentiation = (competitor_data or {}).get("differentiation_opportunities") or []
 
     healthcare_context = ""
     if healthcare_mode:

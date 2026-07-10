@@ -36,20 +36,20 @@ async def run(
     Report Agent: synthesizes all agent outputs into a final executive market intelligence
     report with scores, recommendations, and key metrics using the most capable model.
     """
-    market_overview = (research_data or {}).get("market_overview", "")
-    market_size = (research_data or {}).get("market_size_estimate", "")
-    growth_rate = (research_data or {}).get("growth_rate", "")
-    innovation_score = (innovation_score_data or {}).get("innovation_score", "N/A")
-    score_explanation = (innovation_score_data or {}).get("score_explanation", "")
-    opportunity_score = (opportunity_data or {}).get("opportunity_score", "N/A")
-    overall_risk = (risk_data or {}).get("overall_risk_level", "medium")
-    saturation = (competitor_data or {}).get("market_saturation_score", 50)
-    strategic_recs = (strategy_data or {}).get("strategic_recommendations", [])[:5]
-    gtm = (strategy_data or {}).get("go_to_market", "")
-    validation_rec = (validation_data or {}).get("recommendation", "")
-    confidence = (validation_data or {}).get("confidence_level", "medium")
-    trends = [(t.get("name", "")) for t in (trend_data or {}).get("trends", [])[:3]]
-    funding_trend = (research_data or {}).get("recent_trends", [])[:3]
+    market_overview = (research_data or {}).get("market_overview") or ""
+    market_size = (research_data or {}).get("market_size_estimate") or ""
+    growth_rate = (research_data or {}).get("growth_rate") or ""
+    innovation_score = (innovation_score_data or {}).get("innovation_score") or "N/A"
+    score_explanation = (innovation_score_data or {}).get("score_explanation") or ""
+    opportunity_score = (opportunity_data or {}).get("opportunity_score") or "N/A"
+    overall_risk = (risk_data or {}).get("overall_risk_level") or "medium"
+    saturation = (competitor_data or {}).get("market_saturation_score") or 50
+    strategic_recs = ((strategy_data or {}).get("strategic_recommendations") or [])[:5]
+    gtm = (strategy_data or {}).get("go_to_market") or ""
+    validation_rec = (validation_data or {}).get("recommendation") or ""
+    confidence = (validation_data or {}).get("confidence_level") or "medium"
+    trends = [(t.get("name", "")) for t in ((trend_data or {}).get("trends") or [])[:3]]
+    funding_trend = ((research_data or {}).get("recent_trends") or [])[:3]
 
     competition_level = (
         "high" if saturation >= 70
@@ -102,6 +102,6 @@ Write the final executive market intelligence report. Return a JSON object:
         prompt=prompt,
         system_prompt=_SYSTEM_HC if healthcare_mode else _SYSTEM,
         model=FireworksModel.DEEPSEEK_V4_PRO,
-        max_tokens=4000,
+        max_tokens=5000,
     )
     return parse_json_response(raw)
