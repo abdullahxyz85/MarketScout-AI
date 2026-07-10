@@ -20,9 +20,9 @@ export default function HomePage() {
       <HeroSection />
       <TrustedBySection />
       <FeaturesSection />
-      <WorkflowSection />
-      <DashboardPreviewSection />
       <AIAgentSection />
+      <DashboardPreviewSection />
+      <WorkflowSection />
       <HealthcareSection />
       <CTASection />
       <Footer />
