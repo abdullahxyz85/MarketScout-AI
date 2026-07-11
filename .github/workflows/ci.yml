@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # ── Agent Service: pytest ──────────────────────────────────────────────────
+  test-agent-service:
+    name: "Agent Service — Tests"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: agent-service/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m pytest tests/ -v --tb=short
+        env:
+          # conftest.py sets FIREWORKS_API_KEY=test-key if not present;
+          # these values activate mock paths so no real API calls are made.
+          FIREWORKS_API_KEY: test-key-ci
+          ALLOW_MOCK_SEARCH: "true"
+          AGENT_AUTH_ENABLED: "false"
+          JWT_SECRET: ci-test-jwt-secret-not-used-in-real-auth
+
+  # ── Agent Service: security audit ─────────────────────────────────────────
+  security-audit:
+    name: "Agent Service — Security Audit"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: agent-service/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run security wiring audit
+        run: python audit_security.py
+        env:
+          FIREWORKS_API_KEY: test-key-ci
+          ALLOW_MOCK_SEARCH: "true"
+          AGENT_AUTH_ENABLED: "false"
+          JWT_SECRET: ci-test-secret
+
+  # ── Backend: import & syntax check ────────────────────────────────────────
+  test-backend:
+    name: "Backend — Import & Syntax Check"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check syntax (py_compile)
+        run: python -m py_compile app/main.py app/config.py
+
+      - name: Verify app imports cleanly
+        run: |
+          python -c "
+          import os
+          os.environ['SUPABASE_URL'] = 'https://placeholder.supabase.co'
+          os.environ['SUPABASE_SERVICE_KEY'] = 'placeholder'
+          os.environ['JWT_SECRET'] = 'ci-test-secret-not-real'
+          os.environ['SESSION_SECRET'] = 'ci-session-secret'
+          os.environ['OAUTH_GITHUB_CLIENT_ID'] = 'test'
+          os.environ['OAUTH_GITHUB_CLIENT_SECRET'] = 'test'
+          os.environ['OAUTH_GOOGLE_CLIENT_ID'] = 'test'
+          os.environ['OAUTH_GOOGLE_CLIENT_SECRET'] = 'test'
+          import app.main
+          print('Backend imports OK')
+          "
+
+  # ── Frontend: TypeScript type-check ───────────────────────────────────────
+  typecheck-frontend:
+    name: "Frontend — TypeScript"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript type-check
+        run: npm run typecheck

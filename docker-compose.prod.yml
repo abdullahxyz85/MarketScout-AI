@@ -1,0 +1,31 @@
+# Production Docker Compose overrides
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# This file overrides the dev settings:
+#   - Removes source-code volume mounts (use built images)
+#   - Removes --reload flags
+#   - Sets restart: always for automatic recovery
+#   - Frontend runs the production Next.js build
+#
+# Port exposure (already set in docker-compose.yml, kept as-is here):
+#   - backend/agent-service: expose-only, not reachable from the host
+#   - frontend: published as host 5000 -> container 80
+#     Put nginx on the host in front of localhost:5000 and proxy your domain to it.
+
+services:
+  backend:
+    volumes: []          # No source mount in production
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+    restart: always
+
+  agent-service:
+    volumes: []          # No source mount in production
+    # NOTE: must stay single-worker — research job state (_jobs) lives in
+    # in-process memory (router.py), so extra workers would 404 on
+    # /research/{id}/stream or /history since the job may live on another process.
+    command: uvicorn main:app --host 0.0.0.0 --port 8001 --workers 1
+    restart: always
+
+  frontend:
+    volumes: []          # No source mount — uses the image built by Dockerfile
+    restart: always

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 import {
   FileText, Download, Eye, Share2, Star, BarChart3,
   TrendingUp, Search, Clock, Heart, Zap,
@@ -155,7 +156,9 @@ export default function ReportsPage() {
           </h1>
           <p className="text-white/45 text-sm">View, download, and analyse your market intelligence reports</p>
         </div>
-        <AnimatedButton size="sm"><FileText className="w-4 h-4" />New Research</AnimatedButton>
+        <Link href="/dashboard/research">
+          <AnimatedButton size="sm"><FileText className="w-4 h-4" />New Research</AnimatedButton>
+        </Link>
       </div>
 
       {/* Analytics charts */}

@@ -11,6 +11,7 @@ logger = logging.getLogger("agent-service.pipeline")
 
 import agents.competitor_agent as competitor_agent
 import agents.funding_agent as funding_agent
+import agents.idea_guard_agent as idea_guard_agent
 import agents.innovation_scoring_agent as innovation_scoring_agent
 import agents.opportunity_agent as opportunity_agent
 import agents.patent_agent as patent_agent
@@ -24,24 +25,93 @@ import agents.swot_agent as swot_agent
 import agents.trend_agent as trend_agent
 import agents.validation_agent as validation_agent
 from schemas.state import ResearchState
+from services import agent_logger
+from services.output_validator import validate as _ov_validate
+from services.hallucination_checker import check_claims as _hc_check_claims, extract_claims as _hc_extract_claims
+
+# ── Validator key mapping: AGENT_SEQUENCE name → output_validator schema key ──
+_VALIDATOR_KEY: Dict[str, str] = {
+    "Idea Guard":                  "idea_guard",
+    "Research Agent":              "research",
+    "Competitor Agent":            "competitors",
+    "Scientific Research Agent":   "scientific",
+    "Patent Intelligence Agent":   "patents",
+    "Funding Agent":               "funding",
+    "Trend Agent":                 "trends",
+    "Research Gap Agent":          "research_gaps",
+    "SWOT Agent":                  "swot",
+    "Opportunity Agent":           "opportunities",
+    "Risk Agent":                  "risks",
+    "Innovation Scoring Agent":    "innovation_score",
+    "Validation Agent":            "validation",
+    "Strategy Agent":              "strategy",
+    "Report Generator":            "report",
+}
+
+# Web agents that provide sources → eligible for hallucination checking
+_WEB_AGENTS = {
+    "Research Agent", "Competitor Agent", "Scientific Research Agent",
+    "Patent Intelligence Agent", "Funding Agent", "Trend Agent", "Research Gap Agent",
+}
+
+
+def _post_validate(agent_name: str, result: Dict[str, Any], errors: list) -> None:
+    """Run output_validator + hallucination_checker on a finished agent result.
+
+    Mutates *result* in-place by adding:
+      _validation_warnings  – list[str]  (schema violations)
+      _hallucination_flags  – list[dict] (weak/unsupported claims)
+
+    Never raises — all errors are caught and appended to the errors list.
+    """
+    try:
+        validator_key = _VALIDATOR_KEY.get(agent_name, "")
+        if validator_key:
+            vr = _ov_validate(validator_key, result)
+            if vr.warnings:
+                result["_validation_warnings"] = vr.warnings
+                for w in vr.warnings:
+                    logger.warning("OutputValidator [%s]: %s", agent_name, w)
+
+        if agent_name in _WEB_AGENTS:
+            sources = result.get("sources") or []
+            if sources:
+                claims = _hc_extract_claims(result, max_claims=8)
+                if claims:
+                    hal_results = _hc_check_claims(claims, sources)
+                    flags = [
+                        {"claim": claim[:120], "status": r.status, "score": round(r.score, 3)}
+                        for claim, r in zip(claims, hal_results)
+                        if r.status != "Supported"
+                    ]
+                    if flags:
+                        result["_hallucination_flags"] = flags
+                        logger.warning(
+                            "HallucinationChecker [%s]: %d unsupported claim(s)",
+                            agent_name, len(flags),
+                        )
+    except Exception as exc:
+        errors.append(f"PostValidate[{agent_name}]: {exc}")
+        logger.debug("post_validate error for %s: %s", agent_name, exc)
 
 # Single source of truth for pipeline order — progress is derived from a step's
 # real position in this list (index / total), never a hand-picked percentage.
 AGENT_SEQUENCE = [
-    "Research Agent",
-    "Competitor Agent",
-    "Scientific Research Agent",
-    "Patent Intelligence Agent",
-    "Funding Agent",
-    "Trend Agent",
-    "Research Gap Agent",
-    "SWOT Agent",
-    "Opportunity Agent",
-    "Risk Agent",
-    "Innovation Scoring Agent",
-    "Validation Agent",
-    "Strategy Agent",
-    "Report Generator",
+    "Idea Guard",          # idx 0  — gate: rejects invalid/illegal/vague ideas
+    "Research Agent",      # idx 1
+    "Competitor Agent",    # idx 2
+    "Scientific Research Agent",  # idx 3
+    "Patent Intelligence Agent",  # idx 4
+    "Funding Agent",       # idx 5
+    "Trend Agent",         # idx 6
+    "Research Gap Agent",  # idx 7
+    "SWOT Agent",          # idx 8
+    "Opportunity Agent",   # idx 9
+    "Risk Agent",          # idx 10
+    "Innovation Scoring Agent",   # idx 11
+    "Validation Agent",    # idx 12
+    "Strategy Agent",      # idx 13
+    "Report Generator",    # idx 14
 ]
 _TOTAL_STEPS = len(AGENT_SEQUENCE)
 
@@ -101,15 +171,22 @@ async def _run_step(
     agent_name = AGENT_SEQUENCE[step_index]
     await _push(job_id, {"progress": _progress_before(step_index), "current_agent": agent_name, "status": "running", "done": False})
     logger.info("job %s: %s started", job_id, agent_name)
+    asyncio.create_task(agent_logger.log_agent_start(job_id, agent_name))
     start = time.monotonic()
     try:
         result = await coro
     except Exception as exc:
         result = {}
         errors.append(f"{error_label}: {exc}")
-        logger.exception("job %s: %s failed after %.1fs", job_id, agent_name, time.monotonic() - start)
+        duration = time.monotonic() - start
+        logger.exception("job %s: %s failed after %.1fs", job_id, agent_name, duration)
+        asyncio.create_task(agent_logger.log_agent_error(job_id, agent_name, duration, str(exc)))
     else:
-        logger.info("job %s: %s completed in %.1fs", job_id, agent_name, time.monotonic() - start)
+        duration = time.monotonic() - start
+        logger.info("job %s: %s completed in %.1fs", job_id, agent_name, duration)
+        # ── Deterministic post-validation (output schema + hallucination check) ──
+        _post_validate(agent_name, result, errors)
+        asyncio.create_task(agent_logger.log_agent_complete(job_id, agent_name, duration, result))
     progress = _progress_after(step_index)
     await _push(job_id, {"progress": progress, "current_agent": agent_name, "status": "completed", "done": False})
     return result, progress
@@ -120,8 +197,31 @@ async def _run_step(
 # Each node: pushes running event → calls agent → updates state → pushes completed event
 # ─────────────────────────────────────────────
 
-async def _research_node(state: ResearchState) -> dict:
+async def _idea_guard_node(state: ResearchState) -> dict:
+    """Step 0 — gate agent.  If the idea is rejected the pipeline routes to END."""
     idx = 0
+    job_id = state["job_id"]
+    errors = list(state.get("errors", []))
+    result, progress = await _run_step(
+        job_id, idx, errors, "IdeaGuardAgent",
+        idea_guard_agent.run(state["idea"], state["industry"]),
+    )
+    verdict = result.get("verdict", "approved")
+    next_agent = _next_agent_name(idx) if verdict == "approved" else "Blocked"
+    return {"idea_guard": result, "progress": progress, "current_agent": next_agent, "errors": errors}
+
+
+def _idea_guard_route(state: ResearchState) -> str:
+    """Conditional edge after Idea Guard: continue or short-circuit to END."""
+    verdict = (state.get("idea_guard") or {}).get("verdict", "approved")
+    if verdict == "approved":
+        return "research"
+    # For 'rejected' and 'needs_clarification' we stop the pipeline here.
+    return END
+
+
+async def _research_node(state: ResearchState) -> dict:
+    idx = 1
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -132,7 +232,7 @@ async def _research_node(state: ResearchState) -> dict:
 
 
 async def _competitor_node(state: ResearchState) -> dict:
-    idx = 1
+    idx = 2
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -143,7 +243,7 @@ async def _competitor_node(state: ResearchState) -> dict:
 
 
 async def _scientific_node(state: ResearchState) -> dict:
-    idx = 2
+    idx = 3
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -154,7 +254,7 @@ async def _scientific_node(state: ResearchState) -> dict:
 
 
 async def _patent_node(state: ResearchState) -> dict:
-    idx = 3
+    idx = 4
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -165,7 +265,7 @@ async def _patent_node(state: ResearchState) -> dict:
 
 
 async def _funding_node(state: ResearchState) -> dict:
-    idx = 4
+    idx = 5
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -176,7 +276,7 @@ async def _funding_node(state: ResearchState) -> dict:
 
 
 async def _trend_node(state: ResearchState) -> dict:
-    idx = 5
+    idx = 6
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -187,7 +287,7 @@ async def _trend_node(state: ResearchState) -> dict:
 
 
 async def _research_gap_node(state: ResearchState) -> dict:
-    idx = 6
+    idx = 7
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -204,7 +304,7 @@ async def _research_gap_node(state: ResearchState) -> dict:
 
 
 async def _swot_node(state: ResearchState) -> dict:
-    idx = 7
+    idx = 8
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -223,7 +323,7 @@ async def _swot_node(state: ResearchState) -> dict:
 
 
 async def _opportunity_node(state: ResearchState) -> dict:
-    idx = 8
+    idx = 9
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -242,7 +342,7 @@ async def _opportunity_node(state: ResearchState) -> dict:
 
 
 async def _risk_node(state: ResearchState) -> dict:
-    idx = 9
+    idx = 10
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -260,7 +360,7 @@ async def _risk_node(state: ResearchState) -> dict:
 
 
 async def _innovation_scoring_node(state: ResearchState) -> dict:
-    idx = 10
+    idx = 11
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -271,7 +371,7 @@ async def _innovation_scoring_node(state: ResearchState) -> dict:
 
 
 async def _validation_node(state: ResearchState) -> dict:
-    idx = 11
+    idx = 12
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -290,7 +390,7 @@ async def _validation_node(state: ResearchState) -> dict:
 
 
 async def _strategy_node(state: ResearchState) -> dict:
-    idx = 12
+    idx = 13
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -312,7 +412,7 @@ async def _strategy_node(state: ResearchState) -> dict:
 
 
 async def _report_node(state: ResearchState) -> dict:
-    idx = 13
+    idx = 14
     job_id = state["job_id"]
     errors = list(state.get("errors", []))
     result, progress = await _run_step(
@@ -343,6 +443,7 @@ def _build_pipeline():
     """Assemble and compile the LangGraph multi-agent pipeline."""
     graph = StateGraph(ResearchState)
 
+    graph.add_node("idea_guard", _idea_guard_node)
     graph.add_node("research", _research_node)
     graph.add_node("competitor", _competitor_node)
     graph.add_node("scientific", _scientific_node)
@@ -358,7 +459,9 @@ def _build_pipeline():
     graph.add_node("strategy", _strategy_node)
     graph.add_node("report", _report_node)
 
-    graph.set_entry_point("research")
+    graph.set_entry_point("idea_guard")
+    # Conditional routing: approved → research pipeline; rejected/needs_clarification → END
+    graph.add_conditional_edges("idea_guard", _idea_guard_route, {"research": "research", END: END})
     graph.add_edge("research", "competitor")
     graph.add_edge("competitor", "scientific")
     graph.add_edge("scientific", "patent")
@@ -400,8 +503,9 @@ async def run_pipeline(
         "industry": industry,
         "healthcare_mode": healthcare_mode,
         "progress": 0,
-        "current_agent": "Research Agent",
+        "current_agent": "Idea Guard",
         "errors": [],
+        "idea_guard": None,
         "research": None,
         "competitors": None,
         "scientific": None,
@@ -431,8 +535,10 @@ async def run_pipeline(
         logger.exception("job %s: knowledge graph build failed", job_id)
         final_state["errors"] = list(final_state.get("errors", [])) + [f"KnowledgeGraph: {exc}"]
 
-    # Note: the terminal done=True SSE event (carrying the full result payload)
-    # is pushed by the caller (router.py's _pipeline_task) once it has assembled
-    # the complete response — pushing a done=True event here would race it and
-    # cause the SSE stream to close before the real result is ever sent.
+    # Fire-and-forget: log pipeline completion with all final scores
+    total_duration = time.monotonic() - pipeline_start
+    asyncio.create_task(
+        agent_logger.log_pipeline_complete(job_id, total_duration, dict(final_state))
+    )
+
     return final_state

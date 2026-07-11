@@ -5,17 +5,19 @@ from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
 
 _SYSTEM = (
-    "You are a patent intelligence analyst. Analyze the intellectual property landscape "
-    "for this startup idea, identify existing patents, white spaces, and freedom-to-operate "
-    "risks. Respond with valid JSON only, no markdown, no extra text."
+    PROMPT_INJECTION_GUARD +
+    "You are a patent intelligence analyst. Analyze ONLY the provided patent data and return "
+    "a structured JSON report. Base every patent claim on the retrieved sources. "
+    "Respond with valid JSON only, no markdown, no extra text."
 )
 _SYSTEM_HC = (
+    PROMPT_INJECTION_GUARD +
     "You are a biomedical patent analyst. Assess the IP landscape for this healthcare "
-    "startup including medical device patents, drug patents, method-of-treatment claims, "
-    "and FDA-related IP considerations. Respond with valid JSON only, no markdown."
+    "startup strictly from retrieved sources. Do not invent patent numbers, titles, or holders. "
+    "Respond with valid JSON only, no markdown."
 )
 
 
@@ -73,9 +75,12 @@ Return a JSON object with exactly this structure:
   "patent_density_score": 45,
   "white_spaces": ["IP opportunity1", "IP opportunity2"],
   "freedom_to_operate_risks": ["risk1", "risk2"],
-  "ip_strategy_recommendation": "Recommended IP approach for this startup"
+  "ip_strategy_recommendation": "Recommended IP approach for this startup",
+  "evidence_quality": "high|medium|low|insufficient_evidence",
+  "unsupported_claims": ["list of field names not found in sources, or empty array"]
 }}
-patent_density_score is 0-100 (100 = extremely crowded IP space, hard to operate freely)."""
+patent_density_score is 0-100 (100 = extremely crowded IP space, hard to operate freely).
+{suffix}""".format(suffix=ANTI_HALLUCINATION_SUFFIX)
 
     raw = await call_llm(
         prompt=prompt,

@@ -7,7 +7,14 @@ from config import settings
 
 
 def _is_mock() -> bool:
-    return not bool(settings.TAVILY_API_KEY)
+    if not settings.TAVILY_API_KEY:
+        if not settings.ALLOW_MOCK_SEARCH:
+            raise RuntimeError(
+                "TAVILY_API_KEY is not set and ALLOW_MOCK_SEARCH=false. "
+                "Set a real Tavily key or enable mock search for development."
+            )
+        return True
+    return False
 
 
 def _mock_results(query: str, max_results: int) -> List[Dict[str, Any]]:

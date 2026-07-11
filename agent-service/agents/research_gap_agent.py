@@ -5,16 +5,19 @@ from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
 
 _SYSTEM = (
-    "You are a market gap and innovation analyst. Compare competitors, GitHub projects, "
-    "startups, and publications to identify unexplored opportunities, missing features, "
-    "and emerging niches. Respond with valid JSON only, no markdown, no extra text."
+    PROMPT_INJECTION_GUARD +
+    "You are a market gap and innovation analyst. Identify unexplored opportunities and "
+    "missing features based ONLY on the retrieved sources. "
+    "Do not invent gaps not evidenced in the data. "
+    "Respond with valid JSON only, no markdown, no extra text."
 )
 _SYSTEM_HC = (
-    "You are a healthcare market gap analyst. Identify unmet clinical needs, missing "
-    "interoperability features, care coordination gaps, and underserved patient populations. "
+    PROMPT_INJECTION_GUARD +
+    "You are a healthcare market gap analyst. Identify unmet clinical needs and care gaps "
+    "based ONLY on retrieved sources. Do not fabricate clinical outcomes or patient data. "
     "Respond with valid JSON only, no markdown, no extra text."
 )
 
@@ -76,9 +79,12 @@ Return a JSON object with exactly this structure:
   "competitor_blind_spots": ["blind spot1", "blind spot2"],
   "technology_white_spaces": ["white space1", "white space2"],
   "novelty_score": 75,
-  "differentiation_thesis": "2-3 sentences on how this idea can uniquely differentiate itself"
+  "differentiation_thesis": "2-3 sentences on how this idea can uniquely differentiate itself",
+  "evidence_quality": "high|medium|low|insufficient_evidence",
+  "unsupported_claims": ["list of field names not found in sources, or empty array"]
 }}
-novelty_score is 0-100 (100 = highly novel, no similar solution exists)."""
+novelty_score is 0-100 (100 = highly novel, no similar solution exists).
+{suffix}""".format(suffix=ANTI_HALLUCINATION_SUFFIX)
 
     raw = await call_llm(
         prompt=prompt,

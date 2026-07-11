@@ -4,6 +4,9 @@ uvicorn[standard]>=0.29.0
 pydantic>=2.7.0
 pydantic-settings>=2.2.0
 
+# JWT authentication (same library as backend)
+PyJWT>=2.8.0
+
 # LLM + orchestration
 openai>=1.30.0
 langgraph>=0.2.0

@@ -64,19 +64,11 @@ export function ResearchProvider({ children }: { children: ReactNode }) {
     setError(null);
     setResult(null);
     try {
-      let userId = 'anonymous';
-      try {
-        const userRes = await fetch('/api/users/me', { credentials: 'include' });
-        if (userRes.ok) {
-          const user = await userRes.json();
-          userId = user?.id ?? 'anonymous';
-        }
-      } catch { /* fall back to anonymous */ }
-
       const res = await fetch('/api/agents/research/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idea, industry: selectedIndustry, healthcare_mode: healthcareMode, user_id: userId }),
+        // user_id is derived server-side from the JWT cookie — never sent from client
+        body: JSON.stringify({ idea, industry: selectedIndustry, healthcare_mode: healthcareMode }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));

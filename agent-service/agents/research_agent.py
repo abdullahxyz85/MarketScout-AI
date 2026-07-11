@@ -5,16 +5,20 @@ from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
 
 _SYSTEM = (
-    "You are a senior market research analyst. Analyze the provided web data and return "
-    "a structured JSON report. Respond with valid JSON only, no markdown, no extra text."
+    PROMPT_INJECTION_GUARD +
+    "You are a senior market research analyst. Analyze ONLY the provided web data and return "
+    "a structured JSON report. Base every claim on the retrieved sources. "
+    "Respond with valid JSON only, no markdown, no extra text."
 )
 _SYSTEM_HC = (
+    PROMPT_INJECTION_GUARD +
     "You are a healthcare market research analyst specializing in medical technology, "
-    "digital health, pharma, and clinical innovations. Analyze the provided web data "
+    "digital health, pharma, and clinical innovations. Analyze ONLY the provided web data "
     "including regulatory context, payer dynamics, and clinical adoption factors. "
+    "Base every claim strictly on retrieved sources. "
     "Respond with valid JSON only, no markdown, no extra text."
 )
 
@@ -60,8 +64,11 @@ Return a JSON object with exactly this structure:
   "growth_rate": "e.g. 18% CAGR 2024-2029",
   "target_customers": ["segment1", "segment2"],
   "pain_points": ["pain1", "pain2", "pain3"],
-  "summary": "comprehensive paragraph summarizing the market landscape"
-}}"""
+  "summary": "comprehensive paragraph summarizing the market landscape",
+  "evidence_quality": "high|medium|low|insufficient_evidence",
+  "unsupported_claims": ["list of field names not found in sources, or empty array"]
+}}
+{suffix}""".format(suffix=ANTI_HALLUCINATION_SUFFIX)
 
     raw = await call_llm(
         prompt=prompt,

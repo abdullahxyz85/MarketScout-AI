@@ -5,16 +5,20 @@ from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
 
 _SYSTEM = (
+    PROMPT_INJECTION_GUARD +
     "You are a competitive intelligence analyst. Given web data, identify and analyze "
-    "the key competitors to the startup idea. Respond with valid JSON only, no markdown."
+    "the key competitors to the startup idea. Base every claim on the retrieved sources. "
+    "Respond with valid JSON only, no markdown."
 )
 _SYSTEM_HC = (
+    PROMPT_INJECTION_GUARD +
     "You are a competitive intelligence analyst specializing in healthcare. Identify "
     "hospital systems, digital health startups, medical device companies, and pharma "
-    "players competing in this space. Respond with valid JSON only, no markdown."
+    "players competing in this space. Base every claim on the retrieved sources. "
+    "Respond with valid JSON only, no markdown."
 )
 
 
@@ -66,9 +70,12 @@ Return a JSON object with exactly this structure:
   ],
   "competitive_landscape": "2-3 sentence overview of the competitive environment",
   "market_saturation_score": 65,
-  "differentiation_opportunities": ["opportunity1", "opportunity2"]
+  "differentiation_opportunities": ["opportunity1", "opportunity2"],
+  "evidence_quality": "high|medium|low|insufficient_evidence",
+  "unsupported_claims": ["list of field names not found in sources, or empty array"]
 }}
-Include 3 to 6 competitors. market_saturation_score is 0-100 (100 = fully saturated)."""
+Include 3 to 6 competitors. market_saturation_score is 0-100 (100 = fully saturated).
+{suffix}""".format(suffix=ANTI_HALLUCINATION_SUFFIX)
 
     raw = await call_llm(
         prompt=prompt,

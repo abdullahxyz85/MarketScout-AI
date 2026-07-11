@@ -15,20 +15,35 @@ import {
   ChevronRight,
   Menu,
   X,
+  Sliders,
+  GitCompare,
   HeartPulse,
+  Briefcase,
+  ShieldCheck,
+  FlaskConical,
+  Compass,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/logo";
 import { AnimatedBackground } from "@/components/landing/animated-background";
 import { ResearchProvider, useResearch } from "@/lib/research-context";
+import { clearLastResearch } from "@/lib/research-store";
 
 const sidebarItems = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-  { icon: Search, label: "New Research", href: "/dashboard/research" },
-  { icon: HeartPulse, label: "Healthcare Mode", href: "/dashboard/healthcare" },
-  { icon: Users, label: "Competitors", href: "/dashboard/competitors" },
-  { icon: FileText, label: "Reports", href: "/dashboard/reports" },
-  { icon: Settings, label: "Settings", href: "/dashboard/settings" },
+  { icon: LayoutDashboard, label: "Dashboard",      href: "/dashboard" },
+  { icon: Search,          label: "New Research",   href: "/dashboard/research" },
+  { icon: HeartPulse,      label: "Healthcare",     href: "/dashboard/healthcare" },
+  { icon: Users,           label: "Competitors",    href: "/dashboard/competitors" },
+  { icon: FileText,        label: "Reports",        href: "/dashboard/reports" },
+  { icon: Briefcase,       label: "Startup Kit",    href: "/dashboard/startup-kit" },
+  { icon: ShieldCheck,     label: "Quality",        href: "/dashboard/quality" },
+  { icon: FlaskConical,    label: "Scientific",     href: "/dashboard/scientific" },
+  { icon: Compass,         label: "White Space",    href: "/dashboard/whitespace" },
+  { icon: Sliders,         label: "Scenarios",      href: "/dashboard/scenarios" },
+  { icon: GitCompare,      label: "Compare",        href: "/dashboard/compare" },
+  { icon: MessageCircle,   label: "Ask Research",   href: "/dashboard/ask" },
+  { icon: Settings,        label: "Settings",       href: "/dashboard/settings" },
 ];
 
 type CurrentUser = {
@@ -183,6 +198,10 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     stage === "running" && pathname !== "/dashboard/research";
 
   useEffect(() => {
+    if (process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
+      setUser({ id: "demo", email: "demo@marketscout.ai", name: "Demo User", picture: null });
+      return;
+    }
     fetch("/api/users/me", { credentials: "include" })
       .then((res) => {
         if (!res.ok) throw new Error("unauthenticated");
@@ -200,6 +219,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   const handleLogout = async () => {
+    clearLastResearch(); // Remove research data from localStorage on logout
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     router.replace("/login");
   };
