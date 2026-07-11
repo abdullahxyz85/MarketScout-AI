@@ -11,7 +11,6 @@ class ResearchState(TypedDict):
     progress: int
     current_agent: str
     errors: List[str]
-    idea_guard: Optional[dict]
     research: Optional[dict]
     competitors: Optional[dict]
     scientific: Optional[dict]

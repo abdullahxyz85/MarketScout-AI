@@ -34,12 +34,11 @@ export function loadLastResearch(): StoredResearch | null {
   }
 }
 
-/** Remove the last research result from localStorage (call on logout). */
 export function clearLastResearch(): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch {
-    // localStorage may be unavailable
+    // ignore
   }
 }

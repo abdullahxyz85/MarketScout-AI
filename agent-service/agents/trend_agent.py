@@ -5,21 +5,17 @@ from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
 
 _SYSTEM = (
-    PROMPT_INJECTION_GUARD +
-    "You are a market trend analyst. Identify and analyze ONLY trends, technologies, "
-    "and regulatory shifts found in the provided sources. "
-    "Do not describe trends not supported by the retrieved data. "
+    "You are a market trend analyst. Identify and analyze market trends, emerging technologies, "
+    "and regulatory shifts relevant to the startup idea. "
     "Respond with valid JSON only, no markdown, no extra text."
 )
 _SYSTEM_HC = (
-    PROMPT_INJECTION_GUARD +
-    "You are a healthcare market trend analyst. Identify ONLY trends found in the provided "
-    "sources: clinical adoption, FDA/CMS shifts, reimbursement changes, digital health tech. "
-    "Do not fabricate regulatory approvals or clinical data. "
-    "Respond with valid JSON only, no markdown, no extra text."
+    "You are a healthcare market trend analyst. Identify clinical adoption trends, regulatory "
+    "shifts (FDA, CMS, EHR mandates), reimbursement changes, and emerging digital health "
+    "technologies. Respond with valid JSON only, no markdown, no extra text."
 )
 
 
@@ -72,12 +68,9 @@ Return a JSON object with exactly this structure:
   "emerging_technologies": ["tech1", "tech2", "tech3"],
   "regulatory_trends": ["regulatory shift 1", "regulatory shift 2"],
   "market_forecast": "1-2 sentence market forecast",
-  "disruptive_forces": ["force1", "force2"],
-  "evidence_quality": "high|medium|low|insufficient_evidence",
-  "unsupported_claims": ["list of field names not found in sources, or empty array"]
+  "disruptive_forces": ["force1", "force2"]
 }}
-Include 4 to 6 trends.
-{suffix}""".format(suffix=ANTI_HALLUCINATION_SUFFIX)
+Include 4 to 6 trends."""
 
     raw = await call_llm(
         prompt=prompt,

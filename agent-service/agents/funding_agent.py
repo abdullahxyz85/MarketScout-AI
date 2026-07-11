@@ -5,19 +5,16 @@ from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
 
 _SYSTEM = (
-    PROMPT_INJECTION_GUARD +
-    "You are a venture capital and startup funding analyst. Analyze ONLY the provided "
-    "funding data and return structured investment activity data. "
-    "Do not invent funding rounds, amounts, or investor names not found in the sources. "
+    "You are a venture capital and startup funding analyst. Analyze the funding landscape "
+    "for this market space and provide structured investment activity data. "
     "Respond with valid JSON only, no markdown, no extra text."
 )
 _SYSTEM_HC = (
-    PROMPT_INJECTION_GUARD +
-    "You are a healthcare venture capital analyst. Analyze ONLY the provided funding data "
-    "for digital health, medtech, and biotech. Do not fabricate funding rounds or amounts. "
+    "You are a healthcare venture capital analyst. Analyze digital health, medtech, and "
+    "biotech funding rounds, key investors, and deal flow in this healthcare space. "
     "Respond with valid JSON only, no markdown, no extra text."
 )
 
@@ -70,12 +67,9 @@ Return a JSON object with exactly this structure:
   "top_investors": ["firm1", "firm2", "firm3"],
   "average_valuation_range": "e.g. $20M-$80M at Seed/Series A",
   "funding_trend": "increasing|stable|decreasing",
-  "investor_thesis": "what investors are looking for in this space",
-  "evidence_quality": "high|medium|low|insufficient_evidence",
-  "unsupported_claims": ["list of field names not found in sources, or empty array"]
+  "investor_thesis": "what investors are looking for in this space"
 }}
-funding_activity_score is 0-100 (100 = very active funding environment).
-{suffix}""".format(suffix=ANTI_HALLUCINATION_SUFFIX)
+funding_activity_score is 0-100 (100 = very active funding environment)."""
 
     raw = await call_llm(
         prompt=prompt,

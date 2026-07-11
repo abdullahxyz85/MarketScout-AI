@@ -86,30 +86,19 @@ async def get_past_research(industry: str, limit: int = 3) -> List[Dict[str, Any
         return []
 
 
-async def get_research_result(
-    job_id: str,
-    owner_user_id: Optional[str] = None,
-) -> Optional[Dict[str, Any]]:
-    """Retrieve a specific research result by job_id from persistent storage.
-
-    When *owner_user_id* is supplied and auth is enabled, the query is
-    constrained to rows belonging to that user — preventing cross-user reads.
-    """
+async def get_research_result(job_id: str) -> Optional[Dict[str, Any]]:
+    """Retrieve a specific research result by job_id from persistent storage."""
     if not _is_configured():
         return None
     try:
-        from config import settings
-        from services.auth_guard import _DEV_USER
         client = await _get_client()
-        query = (
-            client.table("agent_research_jobs")
+        response = (
+            await client.table("agent_research_jobs")
             .select("result")
             .eq("job_id", job_id)
+            .limit(1)
+            .execute()
         )
-        # Apply owner filter only in strict auth mode with a real user_id
-        if owner_user_id and owner_user_id != _DEV_USER and settings.AGENT_AUTH_ENABLED:
-            query = query.eq("user_id", owner_user_id)
-        response = await query.limit(1).execute()
         if response.data:
             return json.loads(response.data[0]["result"])
         return None

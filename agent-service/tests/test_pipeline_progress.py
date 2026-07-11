@@ -12,16 +12,8 @@ from orchestrator.pipeline import (
 )
 
 
-def test_agent_sequence_has_fifteen_agents():
-    assert len(AGENT_SEQUENCE) == 15
-
-
-def test_idea_guard_is_first_agent():
-    assert AGENT_SEQUENCE[0] == "Idea Guard"
-
-
-def test_research_agent_is_second():
-    assert AGENT_SEQUENCE[1] == "Research Agent"
+def test_agent_sequence_has_fourteen_agents():
+    assert len(AGENT_SEQUENCE) == 14
 
 
 def test_progress_before_first_step_is_zero():
@@ -44,12 +36,8 @@ def test_progress_after_matches_next_before():
         assert _progress_after(i) == _progress_before(i + 1)
 
 
-def test_next_agent_name_after_idea_guard_is_research_agent():
-    assert _next_agent_name(0) == "Research Agent"
-
-
 def test_next_agent_name_returns_following_agent():
-    assert _next_agent_name(1) == AGENT_SEQUENCE[2]
+    assert _next_agent_name(0) == AGENT_SEQUENCE[1]
 
 
 def test_next_agent_name_returns_complete_on_last_step():
@@ -64,8 +52,7 @@ async def test_run_step_returns_result_and_progress_on_success():
     errors = []
     result, progress = await _run_step("job-1", 0, errors, "TestAgent", ok())
 
-    # _post_validate may add _validation_warnings / _hallucination_flags — check core value
-    assert result.get("value") == 42
+    assert result == {"value": 42}
     assert progress == _progress_after(0)
     assert errors == []
 

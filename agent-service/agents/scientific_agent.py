@@ -5,20 +5,17 @@ from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
 
 _SYSTEM = (
-    PROMPT_INJECTION_GUARD +
-    "You are a scientific research analyst. Summarize ONLY the research found in the "
-    "provided sources. Do not invent paper titles, authors, or findings. "
+    "You are a scientific research analyst. Search and summarize peer-reviewed research "
+    "relevant to this startup idea. Connect research findings with market opportunities. "
     "Respond with valid JSON only, no markdown, no extra text."
 )
 _SYSTEM_HC = (
-    PROMPT_INJECTION_GUARD +
-    "You are a clinical and biomedical research analyst. Report ONLY clinical trials, "
-    "studies, and guidelines found in the provided sources. "
-    "Do not fabricate trial results, publication titles, or clinical outcomes. "
-    "Respond with valid JSON only, no markdown, no extra text."
+    "You are a clinical and biomedical research analyst. Identify relevant clinical trials, "
+    "peer-reviewed studies, systematic reviews, and medical guidelines relevant to this "
+    "healthcare startup idea. Respond with valid JSON only, no markdown, no extra text."
 )
 
 
@@ -76,12 +73,9 @@ Return a JSON object with exactly this structure:
   "research_maturity_score": 60,
   "key_findings": ["finding1", "finding2", "finding3"],
   "research_gaps": ["gap1", "gap2"],
-  "academic_consensus": "brief description of the scientific consensus on this space",
-  "evidence_quality": "high|medium|low|insufficient_evidence",
-  "unsupported_claims": ["list of field names not found in sources, or empty array"]
+  "academic_consensus": "brief description of the scientific consensus on this space"
 }}
-Include 3 to 5 papers. research_maturity_score is 0-100 (100 = very mature field).
-{suffix}""".format(suffix=ANTI_HALLUCINATION_SUFFIX)
+Include 3 to 5 papers. research_maturity_score is 0-100 (100 = very mature field)."""
 
     raw = await call_llm(
         prompt=prompt,

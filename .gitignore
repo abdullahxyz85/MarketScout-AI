@@ -1,85 +1,22 @@
-﻿# ── Python ──────────────────────────────────────────────────────────────────
+# Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
+*.pyc
+*.pyo
 .venv/
 venv/
-env/
-ENV/
-*.egg-info/
-dist/
-build/
-.pytest_cache/
-.coverage
-coverage.xml
-htmlcov/
-.mypy_cache/
-.ruff_cache/
-
-# ── Secrets / Environment ────────────────────────────────────────────────────
-# NEVER commit real credentials — copy .env.example files instead.
 .env
-.env.local
-.env.development
-.env.production
-.env.staging
-.env.test
-**/.env
-**/.env.local
-**/.env.*.local
-
-# ── Node / Frontend ──────────────────────────────────────────────────────────
+agents/__pycache__/
+# Node
 node_modules/
 .next/
 out/
-.npm
-.eslintcache
-frontend/dist/
-frontend/.venv/
 
-# ── IDE / OS ─────────────────────────────────────────────────────────────────
-.DS_Store
-.vscode/settings.json
-.vscode/launch.json
-.idea/
-*.swp
-*.swo
-Thumbs.db
+# IDE / tools
 .claude
-
-# ── Logs ─────────────────────────────────────────────────────────────────────
+.DS_Store
 *.log
-logs/
-agent-service/logs/
 
-# ── Generated test artefacts ─────────────────────────────────────────────────
+# Generated test artefacts (do not commit)
 *.png
+*.pdf
 test_agents.ipynb
-
-# ── LaTeX build artefacts ─────────────────────────────────────────────────────
-report/main.pdf
-report/*.aux
-report/*.log
-report/*.out
-report/*.toc
-report/*.lof
-report/*.lot
-report/*.bbl
-report/*.bcf
-report/*.blg
-report/*.run.xml
-report/*.fdb_latexmk
-report/*.fls
-report/*.acn
-report/*.acr
-report/*.alg
-report/*.glg
-report/*.glo
-report/*.gls
-report/*.ist
-
-# ── Misc ──────────────────────────────────────────────────────────────────────
-prompt rapport.txt
-docker-compose.yml.save

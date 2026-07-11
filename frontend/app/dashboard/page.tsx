@@ -46,7 +46,6 @@ export default function DashboardPage() {
   const [firstName, setFirstName] = useState('there');
   const [liveData, setLiveData] = useState<any>(null);
   const [recentResearch, setRecentResearch] = useState<HistoryItem[]>([]);
-  const [jobId, setJobId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/users/me', { credentials: 'include' })
@@ -54,7 +53,7 @@ export default function DashboardPage() {
       .then((data) => {
         if (data?.display_name) setFirstName(data.display_name.split(' ')[0]);
         if (data?.id) {
-          fetch(`/api/agents/research/history/${data.id}`, { credentials: 'include' })
+          fetch(`/api/agents/research/history/${data.id}`)
             .then((res) => (res.ok ? res.json() : null))
             .then((hist) => {
               if (Array.isArray(hist?.history)) setRecentResearch(hist.history.slice(0, 3));
@@ -68,7 +67,6 @@ export default function DashboardPage() {
   useEffect(() => {
     const stored = loadLastResearch();
     if (stored?.result) setLiveData(stored.result);
-    if (stored?.jobId) setJobId(stored.jobId);
   }, []);
 
   const competitors: Array<{ name: string; marketShare: number; threat: string; revenue: string }> =
@@ -117,16 +115,8 @@ export default function DashboardPage() {
           <p className="text-white/45 text-sm">Here&apos;s your market intelligence overview for today</p>
         </div>
         <div className="flex gap-3">
-          <AnimatedButton variant="secondary" size="sm" onClick={() => window.location.reload()}><RefreshCw className="w-4 h-4" />Refresh</AnimatedButton>
-          <AnimatedButton
-            size="sm"
-            disabled={!jobId}
-            onClick={() => {
-              if (jobId) window.open(`/api/agents/research/${jobId}/report/pdf`, '_blank', 'noopener,noreferrer');
-            }}
-          >
-            <Download className="w-4 h-4" />Export Report
-          </AnimatedButton>
+          <AnimatedButton variant="secondary" size="sm"><RefreshCw className="w-4 h-4" />Refresh</AnimatedButton>
+          <AnimatedButton size="sm"><Download className="w-4 h-4" />Export Report</AnimatedButton>
         </div>
       </div>
 
@@ -340,8 +330,8 @@ export default function DashboardPage() {
             </GlassCard>
           </div>
 
-          {/* Row 4: SWOT + Quick actions */}
-          <div className="grid lg:grid-cols-2 gap-5">
+          {/* Row 4: SWOT + Recent research + Quick actions */}
+          <div className="grid lg:grid-cols-3 gap-5">
             <GlassCard>
               <GlassCardHeader>
                 <div className="flex items-center gap-2">
@@ -374,6 +364,39 @@ export default function DashboardPage() {
 
             <GlassCard>
               <GlassCardHeader>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-semibold text-white">Recent Research</h3>
+                  <AnimatedButton variant="ghost" size="sm">View All</AnimatedButton>
+                </div>
+              </GlassCardHeader>
+              <GlassCardContent className="space-y-2.5">
+                {recentResearch.length ? recentResearch.map((r, i) => (
+                  <motion.div key={r.job_id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
+                    className="flex items-center justify-between p-3 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.07] transition-colors cursor-pointer">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-lg bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center flex-shrink-0">
+                        <FileText className="w-4 h-4 text-indigo-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-medium text-white truncate">{r.idea ?? 'Untitled Research'}</div>
+                        <div className="text-xs text-white/35 flex items-center gap-1 mt-0.5">
+                          <Clock className="w-3 h-3" />{r.created_at ? new Date(r.created_at).toLocaleDateString() : ''}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0 ml-2">
+                      <div className="text-lg font-bold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">{r.innovation_score ?? '—'}</div>
+                      <div className="text-xs text-white/35">score</div>
+                    </div>
+                  </motion.div>
+                )) : (
+                  <p className="text-sm text-white/40 py-6 text-center">No past research runs found.</p>
+                )}
+              </GlassCardContent>
+            </GlassCard>
+
+            <GlassCard>
+              <GlassCardHeader>
                 <h3 className="text-base font-semibold text-white">Quick Actions</h3>
               </GlassCardHeader>
               <GlassCardContent>
@@ -399,40 +422,6 @@ export default function DashboardPage() {
           </div>
         </>
       )}
-
-      {/* Recent Research — always visible, independent of local "last run" state */}
-      <GlassCard>
-        <GlassCardHeader>
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold text-white">Recent Research</h3>
-            <AnimatedButton variant="ghost" size="sm">View All</AnimatedButton>
-          </div>
-        </GlassCardHeader>
-        <GlassCardContent className="space-y-2.5">
-          {recentResearch.length ? recentResearch.map((r, i) => (
-            <motion.div key={r.job_id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
-              className="flex items-center justify-between p-3 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.07] transition-colors cursor-pointer">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-lg bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-4 h-4 text-indigo-400" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-medium text-white truncate">{r.idea ?? 'Untitled Research'}</div>
-                  <div className="text-xs text-white/35 flex items-center gap-1 mt-0.5">
-                    <Clock className="w-3 h-3" />{r.created_at ? new Date(r.created_at).toLocaleDateString() : ''}
-                  </div>
-                </div>
-              </div>
-              <div className="text-right flex-shrink-0 ml-2">
-                <div className="text-lg font-bold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">{r.innovation_score ?? '—'}</div>
-                <div className="text-xs text-white/35">score</div>
-              </div>
-            </motion.div>
-          )) : (
-            <p className="text-sm text-white/40 py-6 text-center">No past research runs found.</p>
-          )}
-        </GlassCardContent>
-      </GlassCard>
     </div>
   );
 }
