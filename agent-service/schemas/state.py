@@ -27,3 +27,4 @@ class ResearchState(TypedDict):
     strategy: Optional[dict]
     knowledge_graph: Optional[dict]
     report: Optional[dict]
+    consistency_check: Optional[dict]   # Added: post-pipeline consistency audit

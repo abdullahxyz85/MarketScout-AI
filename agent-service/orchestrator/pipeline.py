@@ -521,6 +521,7 @@ async def run_pipeline(
         "strategy": None,
         "knowledge_graph": None,
         "report": None,
+        "consistency_check": None,
     }
     pipeline = get_pipeline()
     pipeline_start = time.monotonic()
@@ -534,6 +535,31 @@ async def run_pipeline(
     except Exception as exc:
         logger.exception("job %s: knowledge graph build failed", job_id)
         final_state["errors"] = list(final_state.get("errors", [])) + [f"KnowledgeGraph: {exc}"]
+
+    # Run post-pipeline consistency checks
+    try:
+        from services.consistency_checker import check as _consistency_check
+        cc = _consistency_check(dict(final_state))
+        final_state["consistency_check"] = {
+            "passed": cc.passed,
+            "mock_mode": cc.mock_mode,
+            "score_coverage": cc.score_coverage,
+            "suspicious_identical_scores": cc.suspicious_identical_scores,
+            "warnings": cc.warnings,
+            "errors": cc.errors,
+        }
+        if cc.errors:
+            logger.warning(
+                "job %s: consistency errors: %s", job_id, cc.errors
+            )
+        if cc.warnings:
+            logger.info(
+                "job %s: consistency warnings (%d): %s",
+                job_id, len(cc.warnings), cc.warnings[0],
+            )
+    except Exception as exc:
+        logger.exception("job %s: consistency check failed", job_id)
+        final_state["errors"] = list(final_state.get("errors", [])) + [f"ConsistencyCheck: {exc}"]
 
     # Fire-and-forget: log pipeline completion with all final scores
     total_duration = time.monotonic() - pipeline_start
