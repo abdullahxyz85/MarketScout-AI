@@ -46,6 +46,7 @@ export default function DashboardPage() {
   const [firstName, setFirstName] = useState('there');
   const [liveData, setLiveData] = useState<any>(null);
   const [recentResearch, setRecentResearch] = useState<HistoryItem[]>([]);
+  const [jobId, setJobId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/users/me', { credentials: 'include' })
@@ -67,6 +68,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const stored = loadLastResearch();
     if (stored?.result) setLiveData(stored.result);
+    if (stored?.jobId) setJobId(stored.jobId);
   }, []);
 
   const competitors: Array<{ name: string; marketShare: number; threat: string; revenue: string }> =
@@ -115,8 +117,16 @@ export default function DashboardPage() {
           <p className="text-white/45 text-sm">Here&apos;s your market intelligence overview for today</p>
         </div>
         <div className="flex gap-3">
-          <AnimatedButton variant="secondary" size="sm"><RefreshCw className="w-4 h-4" />Refresh</AnimatedButton>
-          <AnimatedButton size="sm"><Download className="w-4 h-4" />Export Report</AnimatedButton>
+          <AnimatedButton variant="secondary" size="sm" onClick={() => window.location.reload()}><RefreshCw className="w-4 h-4" />Refresh</AnimatedButton>
+          <AnimatedButton
+            size="sm"
+            disabled={!jobId}
+            onClick={() => {
+              if (jobId) window.open(`/api/agents/research/${jobId}/report/pdf`, '_blank', 'noopener,noreferrer');
+            }}
+          >
+            <Download className="w-4 h-4" />Export Report
+          </AnimatedButton>
         </div>
       </div>
 
