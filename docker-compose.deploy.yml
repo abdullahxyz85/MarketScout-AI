@@ -1,22 +1,20 @@
-# Development Docker Compose
-# Mounts source code for hot-reload.
-# Usage: docker compose up --build
+# Standalone production compose file — pulls prebuilt images from Docker Hub.
+# Does NOT need the source repo on the server, only this file plus the three
+# .env files (backend/.env, agent-service/.env, frontend/.env.local if used).
 #
-# For production, use:  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Usage on the server:
+#   docker compose -f docker-compose.deploy.yml pull
+#   docker compose -f docker-compose.deploy.yml up -d
+#   docker compose -f docker-compose.deploy.yml logs -f backend
 
 services:
   backend:
     image: gam5510/marketscout-backend:latest
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
     expose:
       - "8000"
     env_file:
       - ./backend/.env
-    volumes:
-      - ./backend:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
       interval: 30s
@@ -25,20 +23,18 @@ services:
       start_period: 20s
     networks:
       - marketscout
-    restart: on-failure
+    restart: always
 
   agent-service:
     image: gam5510/marketscout-agent-service:latest
-    build:
-      context: ./agent-service
-      dockerfile: Dockerfile
     expose:
       - "8001"
     env_file:
       - ./agent-service/.env
-    volumes:
-      - ./agent-service:/app
-    command: uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+    # NOTE: must stay single-worker — research job state (_jobs) lives in
+    # in-process memory (router.py), so extra workers would 404 on
+    # /research/{id}/stream or /history since the job may live on another process.
+    command: uvicorn main:app --host 0.0.0.0 --port 8001 --workers 1
     depends_on:
       backend:
         condition: service_healthy
@@ -50,22 +46,12 @@ services:
       start_period: 30s
     networks:
       - marketscout
-    restart: on-failure
+    restart: always
 
   frontend:
     image: gam5510/marketscout-frontend:latest
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-false}
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-ai.itdpy.xyz}
     ports:
       - "5000:5000"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
     depends_on:
       backend:
         condition: service_healthy
@@ -73,7 +59,7 @@ services:
         condition: service_healthy
     networks:
       - marketscout
-    restart: on-failure
+    restart: always
 
 networks:
   marketscout:

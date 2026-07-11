@@ -7,8 +7,16 @@ COPY package.json package-lock.json* ./
 RUN npm ci
 
 COPY . .
+RUN mkdir -p public
 
-# NEXT_PUBLIC_DEMO_MODE defaults to false (not set = production mode)
+# NEXT_PUBLIC_* vars are inlined at build time, so they must arrive as
+# build args (not just runtime env) — pass them via `docker build --build-arg`
+# or docker-compose's `build.args`.
+ARG NEXT_PUBLIC_DEMO_MODE=false
+ARG NEXT_PUBLIC_API_URL=""
+ENV NEXT_PUBLIC_DEMO_MODE=${NEXT_PUBLIC_DEMO_MODE}
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
 RUN npm run build
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────────────────
