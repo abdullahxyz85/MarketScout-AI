@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Compass, Target, TrendingUp, Globe, Cpu, Zap,
-  ChevronRight, BarChart3, Lightbulb, Search,
+  ChevronRight, Search,
 } from 'lucide-react';
 import { GlassCard, GlassCardContent, GlassCardHeader } from '@/components/ui/glass-card';
 import { AnimatedBadge } from '@/components/ui/animated-badge';
@@ -31,13 +31,14 @@ function OpportunityScore({ score }: { score: number }) {
   );
 }
 
+// Keys must match the research_gap_agent.py LLM output schema exactly
+// (agent-service/agents/research_gap_agent.py, prompt lines 75-85).
 const GAP_CATEGORIES = [
-  { key: 'identified_gaps',      label: 'Identified Gaps',         icon: Search,    color: 'from-indigo-500 to-violet-500' },
-  { key: 'market_opportunities', label: 'Market Opportunities',    icon: Target,    color: 'from-emerald-500 to-teal-500' },
-  { key: 'technical_gaps',       label: 'Technical Gaps',          icon: Cpu,       color: 'from-amber-500 to-orange-500' },
-  { key: 'geographic_gaps',      label: 'Geographic Opportunities', icon: Globe,    color: 'from-blue-500 to-cyan-500' },
-  { key: 'competitive_gaps',     label: 'Competitive White Spaces', icon: TrendingUp, color: 'from-rose-500 to-pink-500' },
-  { key: 'unmet_needs',          label: 'Unmet Customer Needs',    icon: Lightbulb, color: 'from-violet-500 to-purple-500' },
+  { key: 'unexplored_opportunities',   label: 'Unexplored Opportunities',   icon: Search,     color: 'from-indigo-500 to-violet-500' },
+  { key: 'missing_features_in_market', label: 'Missing Features in Market', icon: Target,     color: 'from-emerald-500 to-teal-500' },
+  { key: 'technology_white_spaces',    label: 'Technology White Spaces',    icon: Cpu,        color: 'from-amber-500 to-orange-500' },
+  { key: 'emerging_niches',            label: 'Emerging Niches',           icon: Globe,      color: 'from-blue-500 to-cyan-500' },
+  { key: 'competitor_blind_spots',     label: 'Competitor Blind Spots',    icon: TrendingUp, color: 'from-rose-500 to-pink-500' },
 ] as const;
 
 // ── Page ───────────────────────────────────────────────────────────────────────
@@ -67,8 +68,8 @@ export default function WhiteSpacePage() {
     );
   }
 
-  const opportunityScore: number = gaps.opportunity_score ?? 0;
-  const summary: string = gaps.summary ?? gaps.gap_summary ?? '';
+  const opportunityScore: number = gaps.novelty_score ?? 0;
+  const summary: string = gaps.differentiation_thesis ?? '';
   const evidenceQuality: string = gaps.evidence_quality ?? '';
 
   return (
@@ -151,7 +152,7 @@ export default function WhiteSpacePage() {
       {/* Raw adjacency gaps if model uses different keys */}
       {(() => {
         const extraKeys = Object.keys(gaps).filter(
-          (k) => !['opportunity_score', 'summary', 'gap_summary', 'evidence_quality', 'sources',
+          (k) => !['novelty_score', 'differentiation_thesis', 'evidence_quality', 'sources',
             'unsupported_claims', '_validation_warnings', '_hallucination_flags',
             ...GAP_CATEGORIES.map((c) => c.key)].includes(k)
             && Array.isArray(gaps[k]) && (gaps[k] as string[]).length > 0

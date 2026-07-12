@@ -10,6 +10,8 @@ import {
 import { GlassCard, GlassCardContent, GlassCardHeader } from '@/components/ui/glass-card';
 import { AnimatedButton } from '@/components/ui/animated-button';
 import { loadLastResearch } from '@/lib/research-store';
+import { ResearchHistoryItem, useResearchHistory } from '@/lib/use-research-history';
+import { ResearchPicker } from '@/components/dashboard/research-picker';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -115,12 +117,21 @@ function ThreatBadge({ level }: { level: string }) {
 
 // ─── Job Input Row ─────────────────────────────────────────────────────────────
 
-function JobInputRow({ label, color, value, onChange }: {
+function JobInputRow({ label, color, value, onChange, history, historyLoading }: {
   label: string; color: string; value: string; onChange: (v: string) => void;
+  history: ResearchHistoryItem[]; 
+  historyLoading: boolean;
 }) {
   return (
-    <div>
+    <div className="space-y-2">
       <label className={`text-xs font-semibold ${color} mb-1 block`}>{label}</label>
+      <ResearchPicker
+        history={history}
+        loading={historyLoading}
+        onSelect={onChange}
+        placeholder="Pick from your research history…"
+        className="py-2 text-xs"
+      />
       <input
         value={value}
         onChange={e => onChange(e.target.value)}
@@ -135,6 +146,7 @@ function JobInputRow({ label, color, value, onChange }: {
 
 export default function ComparePage() {
   const lastJobId = loadLastResearch()?.jobId ?? '';
+  const { history, loading: historyLoading } = useResearchHistory();
 
   const [tab, setTab]         = useState<'ideas' | 'competitors'>('ideas');
   const [jobIdA, setJobIdA]   = useState(lastJobId);
@@ -200,7 +212,7 @@ export default function ComparePage() {
           <GlassCardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-3">
-                <JobInputRow label="Idea A — Job ID" color="text-violet-300" value={jobIdA} onChange={setJobIdA} />
+                <JobInputRow label="Idea A — Job ID" color="text-violet-300" value={jobIdA} onChange={setJobIdA} history={history} historyLoading={historyLoading} />
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">Label (optional)</label>
                   <input
@@ -212,7 +224,7 @@ export default function ComparePage() {
                 </div>
               </div>
               <div className="space-y-3">
-                <JobInputRow label="Idea B — Job ID" color="text-cyan-300" value={jobIdB} onChange={setJobIdB} />
+                <JobInputRow label="Idea B — Job ID" color="text-cyan-300" value={jobIdB} onChange={setJobIdB} history={history} historyLoading={historyLoading} />
                 <div>
                   <label className="text-xs text-gray-400 mb-1 block">Label (optional)</label>
                   <input

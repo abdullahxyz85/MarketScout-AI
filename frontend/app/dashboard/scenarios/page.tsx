@@ -10,6 +10,8 @@ import {
 import { GlassCard, GlassCardContent, GlassCardHeader } from '@/components/ui/glass-card';
 import { AnimatedButton } from '@/components/ui/animated-button';
 import { loadLastResearch } from '@/lib/research-store';
+import { useResearchHistory } from '@/lib/use-research-history';
+import { ResearchPicker } from '@/components/dashboard/research-picker';
 
 const SCENARIO_FIELDS = [
   {
@@ -110,6 +112,7 @@ function RecommendationBadge({ rec }: { rec?: string }) {
 
 export default function ScenariosPage() {
   const [jobId, setJobId] = useState(() => loadLastResearch()?.jobId ?? '');
+  const { history, loading: historyLoading } = useResearchHistory();
   const [scenario, setScenario] = useState<Partial<Record<ScenarioKey, string>>>({});
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ScenarioResult | null>(null);
@@ -171,19 +174,25 @@ export default function ScenariosPage() {
               <GlassCardHeader>
                 <span className="text-white font-semibold">Base Research Job</span>
               </GlassCardHeader>
-              <GlassCardContent>
-                <label className="text-xs text-gray-400 mb-1 block">Job ID</label>
-                <input
-                  value={jobId}
-                  onChange={e => setJobId(e.target.value)}
-                  placeholder="Paste a completed job ID, or the last one is pre-filled"
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-                />
-                {loadLastResearch()?.idea && (
-                  <p className="text-xs text-gray-500 mt-1.5">
-                    Last research: <span className="text-violet-300">{loadLastResearch()?.idea}</span>
-                  </p>
-                )}
+              <GlassCardContent className="space-y-3">
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">Pick from your research history</label>
+                  <ResearchPicker history={history} loading={historyLoading} onSelect={setJobId} className="py-2.5" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 mb-1 block">Job ID</label>
+                  <input
+                    value={jobId}
+                    onChange={e => setJobId(e.target.value)}
+                    placeholder="Paste a completed job ID, or the last one is pre-filled"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                  />
+                  {loadLastResearch()?.idea && (
+                    <p className="text-xs text-gray-500 mt-1.5">
+                      Last research: <span className="text-violet-300">{loadLastResearch()?.idea}</span>
+                    </p>
+                  )}
+                </div>
               </GlassCardContent>
             </GlassCard>
           </motion.div>

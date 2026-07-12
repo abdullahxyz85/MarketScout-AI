@@ -17,7 +17,7 @@ import { AnimatedProgress } from '@/components/ui/animated-progress';
 import { AnimatedBadge, StatusBadge } from '@/components/ui/animated-badge';
 import { AnimatedButton } from '@/components/ui/animated-button';
 import { EmptyResearchState } from '@/components/dashboard/empty-research-state';
-import { loadLastResearch } from '@/lib/research-store';
+import { loadLastResearch, saveLastResearch } from '@/lib/research-store';
 import { getAgentStatuses } from '@/lib/agents';
 
 /* ── Recharts shared styles ── */
@@ -30,6 +30,7 @@ const tooltipStyle = {
     color: '#fff',
   },
   labelStyle: { color: '#94a3b8' },
+  itemStyle: { color: '#fff' },
 };
 
 const PIE_COLORS = ['#6366f1', '#a855f7', '#06b6d4', '#10b981', '#f59e0b'];
@@ -47,6 +48,25 @@ export default function DashboardPage() {
   const [liveData, setLiveData] = useState<any>(null);
   const [recentResearch, setRecentResearch] = useState<HistoryItem[]>([]);
   const [jobId, setJobId] = useState<string | null>(null);
+  const [switchingJobId, setSwitchingJobId] = useState<string | null>(null);
+
+  async function selectResearch(id: string) {
+    if (id === jobId || switchingJobId) return;
+    setSwitchingJobId(id);
+    try {
+      const res = await fetch(`/api/agents/research/${id}/result`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to load research result');
+      const result = await res.json();
+      saveLastResearch(id, result);
+      setLiveData(result);
+      setJobId(id);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch {
+      // leave the dashboard showing whatever was previously loaded
+    } finally {
+      setSwitchingJobId(null);
+    }
+  }
 
   useEffect(() => {
     fetch('/api/users/me', { credentials: 'include' })
@@ -405,16 +425,25 @@ export default function DashboardPage() {
         <GlassCardHeader>
           <div className="flex items-center justify-between">
             <h3 className="text-base font-semibold text-white">Recent Research</h3>
-            <AnimatedButton variant="ghost" size="sm">View All</AnimatedButton>
+            <Link href="/dashboard/reports">
+              <AnimatedButton variant="ghost" size="sm">View All</AnimatedButton>
+            </Link>
           </div>
         </GlassCardHeader>
         <GlassCardContent className="space-y-2.5">
           {recentResearch.length ? recentResearch.map((r, i) => (
             <motion.div key={r.job_id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
-              className="flex items-center justify-between p-3 rounded-xl bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.07] transition-colors cursor-pointer">
+              onClick={() => selectResearch(r.job_id)}
+              className={`flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer ${
+                r.job_id === jobId
+                  ? 'bg-indigo-500/10 border-indigo-500/30'
+                  : 'bg-white/[0.04] border-white/[0.07] hover:bg-white/[0.07]'
+              } ${switchingJobId ? 'pointer-events-none opacity-60' : ''}`}>
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-9 h-9 rounded-lg bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-4 h-4 text-indigo-400" />
+                  {switchingJobId === r.job_id
+                    ? <div className="w-3.5 h-3.5 rounded-full border-2 border-indigo-400/30 border-t-indigo-400 animate-spin" />
+                    : <FileText className="w-4 h-4 text-indigo-400" />}
                 </div>
                 <div className="min-w-0">
                   <div className="text-xs font-medium text-white truncate">{r.idea ?? 'Untitled Research'}</div>

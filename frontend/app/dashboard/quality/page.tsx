@@ -72,6 +72,7 @@ interface SourcesResponse {
 const TOOLTIP = {
   contentStyle: { backgroundColor: 'rgba(10,10,20,0.92)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '10px', fontSize: 11, color: '#fff' },
   labelStyle: { color: '#94a3b8' },
+  itemStyle: { color: '#fff' },
 };
 
 // ── Grade badge ────────────────────────────────────────────────────────────────
@@ -344,7 +345,7 @@ export default function QualityPage() {
                     <BarChart data={agentScoreData} margin={{ top: 4, right: 8, left: -24, bottom: 4 }}>
                       <XAxis dataKey="agent" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
                       <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                      <Tooltip {...TOOLTIP} formatter={(v: number) => [`${v}%`, 'Score']} />
+                      <Tooltip {...TOOLTIP} formatter={(v: number) => [`${v}%`, 'Score']} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
                       <Bar dataKey="score" radius={[4, 4, 0, 0]}>
                         {agentScoreData.map((d, i) => (
                           <Cell key={i} fill={d.score >= 80 ? '#10b981' : d.score >= 60 ? '#6366f1' : '#f59e0b'} />
@@ -365,6 +366,10 @@ export default function QualityPage() {
                   </span>
                 </GlassCardHeader>
                 <GlassCardContent>
+                  <p className="flex items-start gap-1.5 text-[11px] text-white/35 mb-3 pb-3 border-b border-white/[0.06]">
+                    <Info className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                    These are automated checks on this run's own data (missing fields, unparsed LLM output, empty citations) — not app errors. They flag where this report's evidence is thin, so treat them as a trust signal, not a bug report.
+                  </p>
                   <ul className="space-y-1.5">
                     {quality.warnings.map((w, i) => (
                       <li key={i} className="text-xs text-white/50 flex gap-2">

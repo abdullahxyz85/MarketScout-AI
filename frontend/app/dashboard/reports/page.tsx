@@ -10,7 +10,7 @@ import {
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell,
-  AreaChart, Area,
+  AreaChart, Area, Legend,
 } from 'recharts';
 import { GlassCard, GlassCardContent, GlassCardHeader } from '@/components/ui/glass-card';
 import { AnimatedButton } from '@/components/ui/animated-button';
@@ -21,6 +21,7 @@ const scoreColor = (s: number) => s >= 90 ? 'text-emerald-400' : s >= 75 ? 'text
 const tooltipStyle = {
   contentStyle: { backgroundColor: 'rgba(10,10,20,0.92)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '12px', fontSize: 12, color: '#fff' },
   labelStyle: { color: '#94a3b8' },
+  itemStyle: { color: '#fff' },
 };
 
 interface HistoryItem {
@@ -186,6 +187,12 @@ export default function ReportsPage() {
                   <XAxis dataKey="month" tick={{ fill: 'rgba(255,255,255,0.35)', fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: 'rgba(255,255,255,0.35)', fontSize: 10 }} axisLine={false} tickLine={false} />
                   <Tooltip {...tooltipStyle} />
+                  <Legend
+                    verticalAlign="top"
+                    height={28}
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}
+                  />
                   <Area type="monotone" dataKey="reports" stroke="#6366f1" strokeWidth={2} fill="url(#aRep)" name="Reports" />
                   <Area type="monotone" dataKey="avgScore" stroke="#10b981" strokeWidth={1.5} fill="url(#aScore)" name="Avg Score" />
                 </AreaChart>
@@ -249,7 +256,7 @@ export default function ReportsPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="name" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip {...tooltipStyle} />
+                <Tooltip {...tooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
                 <Bar dataKey="reports" name="Reports" fill="url(#bRep2)" radius={[5, 5, 0, 0]} />
                 <Bar dataKey="avgScore" name="Avg Score" fill="url(#bScore2)" radius={[5, 5, 0, 0]} />
               </BarChart>
@@ -289,6 +296,7 @@ export default function ReportsPage() {
                 </div>
 
                 <div className="flex items-center justify-between pt-3 border-t border-white/[0.06]">
+                  {/* Eye (view) and Share2 have no backend endpoint yet — no-op until one exists */}
                   <div className="flex gap-2">
                     <motion.button whileHover={{ scale: 1.08 }} className="p-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/50 hover:text-white hover:bg-white/[0.08] transition-colors">
                       <Eye className="w-3.5 h-3.5" />

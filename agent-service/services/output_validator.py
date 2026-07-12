@@ -24,6 +24,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Literal, Sequence
 
+# Pipeline state keys that carry plain request/run metadata rather than an
+# agent's LLM output (see orchestrator/pipeline.py's initial state dict).
+# These must never be run through agent-output validation.
+_NON_AGENT_KEYS = {
+    "job_id", "idea", "industry", "healthcare_mode",
+    "progress", "current_agent", "errors", "status", "done",
+}
+
 
 # ─── Result type ──────────────────────────────────────────────────────────────
 
@@ -333,7 +341,7 @@ def validate_all(agent_outputs: Dict[str, Any]) -> Dict[str, ValidationResult]:
     """
     results: Dict[str, ValidationResult] = {}
     for name, output in agent_outputs.items():
-        if output is None:
+        if output is None or name in _NON_AGENT_KEYS:
             continue
         results[name] = validate(name, output)
     return results
