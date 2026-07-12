@@ -1,11 +1,11 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, idea_to_query, parse_json_response, truncate_sources
 
 _SYSTEM = (
     PROMPT_INJECTION_GUARD +
@@ -26,14 +26,15 @@ async def run(idea: str, industry: str, healthcare_mode: bool = False) -> Dict[s
     Patent Intelligence Agent: analyzes public patent databases to identify existing IP,
     white spaces for innovation, and freedom-to-operate risks.
     """
+    kw = idea_to_query(idea)
     queries = [
-        f"{idea} {industry} patent intellectual property USPTO",
-        f"{idea} technology patent landscape existing IP",
+        f"{kw} {industry} patent intellectual property USPTO",
+        f"{kw} technology patent landscape existing IP",
     ]
     if healthcare_mode:
-        queries.append(f"{idea} medical device pharma patent clinical method claim")
+        queries.append(f"{kw} medical device pharma patent clinical method claim")
     else:
-        queries.append(f"{idea} software patent AI innovation IP landscape")
+        queries.append(f"{kw} software patent AI innovation IP landscape")
 
     raw_results = await asyncio.gather(
         *[search(q, max_results=4, include_domains=[
@@ -49,17 +50,34 @@ async def run(idea: str, industry: str, healthcare_mode: bool = False) -> Dict[s
 
     # Fallback search without domain restriction if no results found
     if not search_results:
-        fallback = await search(f"{idea} {industry} patent analysis IP", max_results=6)
-        search_results.extend(fallback)
+        try:
+            fallback = await search(f"{kw} {industry} patent analysis IP", max_results=6)
+            search_results.extend(fallback)
+        except Exception:
+            pass  # Rate limit or other error — continue without fallback results
 
     sources_text = format_sources_for_prompt(truncate_sources(search_results[:8]))
 
+    no_source_note = ""
+    if not search_results:
+        no_source_note = (
+            "\nNOTE: No web sources were retrieved. Use your domain knowledge to: "
+            "(1) describe 2-3 REAL known patent families or key holders in this IP space, "
+            "(2) identify technology white spaces based on the idea's novelty, "
+            "(3) assess freedom-to-operate risks from known patent holders. "
+            "Set existing_patents titles to known patent areas (not specific patent numbers). "
+            "List patent numbers in unsupported_claims. "
+            "patent_density_score MUST be filled in.\n"
+        )
+
+    suffix = ANTI_HALLUCINATION_SUFFIX
     prompt = f"""Startup Idea: {idea}
 Industry: {industry}
 Healthcare Mode: {healthcare_mode}
 
 Patent Research Data:
 {sources_text}
+{no_source_note}
 
 Return a JSON object with exactly this structure:
 {{
@@ -80,14 +98,17 @@ Return a JSON object with exactly this structure:
   "unsupported_claims": ["list of field names not found in sources, or empty array"]
 }}
 patent_density_score is 0-100 (100 = extremely crowded IP space, hard to operate freely).
-{suffix}""".format(suffix=ANTI_HALLUCINATION_SUFFIX)
+{suffix}"""
 
     raw = await call_llm(
         prompt=prompt,
         system_prompt=_SYSTEM_HC if healthcare_mode else _SYSTEM,
         model=FireworksModel.DEEPSEEK_V4_FLASH,
-        max_tokens=1500,
+        max_tokens=4000,
+        temperature=0,  # deterministic — patent_density_score must be stable
     )
     result = parse_json_response(raw)
     result["sources"] = extract_source_urls(search_results)
     return result
+
+

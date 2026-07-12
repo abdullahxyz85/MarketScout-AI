@@ -31,16 +31,20 @@ def _mock_results(query: str, max_results: int) -> List[Dict[str, Any]]:
 
 
 async def search(query: str, max_results: int = 5, search_depth: str = "basic", include_domains=None) -> List[Dict[str, Any]]:
-    """Execute web search via Tavily. Falls back to mock data when TAVILY_API_KEY is not configured."""
+    """Execute web search via Tavily. Falls back to empty list on rate-limit or API errors."""
     if _is_mock():
         return _mock_results(query, max_results)
-    from tavily import TavilyClient
-    client = TavilyClient(api_key=settings.TAVILY_API_KEY)
-    kwargs: Dict[str, Any] = {"query": query, "max_results": max_results, "search_depth": search_depth}
-    if include_domains:
-        kwargs["include_domains"] = include_domains
-    response = await asyncio.to_thread(client.search, **kwargs)
-    return response.get("results", [])
+    try:
+        from tavily import TavilyClient
+        client = TavilyClient(api_key=settings.TAVILY_API_KEY)
+        kwargs: Dict[str, Any] = {"query": query, "max_results": max_results, "search_depth": search_depth}
+        if include_domains:
+            kwargs["include_domains"] = include_domains
+        response = await asyncio.to_thread(client.search, **kwargs)
+        return response.get("results", [])
+    except Exception:
+        # Rate limit, auth error, network failure — return empty rather than crashing the pipeline
+        return []
 
 
 async def search_news(query: str, max_results: int = 5) -> List[Dict[str, Any]]:

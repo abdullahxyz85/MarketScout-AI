@@ -92,11 +92,11 @@ export default function DashboardPage() {
   const innovationScores = liveData?.innovation_score?.scores;
   const radarData = innovationScores ? [
     { metric: 'Novelty', value: innovationScores.novelty ?? 0 },
-    { metric: 'Opportunity', value: innovationScores.market_saturation ?? 0 },
-    { metric: 'Funding', value: innovationScores.funding_activity ?? 0 },
+    { metric: 'Opportunity', value: innovationScores.market_opp ?? 0 },
+    { metric: 'Funding', value: innovationScores.funding ?? 0 },
     { metric: 'Research', value: innovationScores.research_maturity ?? 0 },
-    { metric: 'IP Space', value: innovationScores.patent_density ?? 0 },
-    { metric: 'Competition', value: innovationScores.competition_level ?? 0 },
+    { metric: 'IP Space', value: innovationScores.ip_space ?? 0 },
+    { metric: 'Competition', value: innovationScores.opportunity_boost ?? 0 },
   ] : [];
 
   const kpiCards = liveData ? [

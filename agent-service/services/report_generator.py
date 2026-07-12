@@ -116,7 +116,27 @@ def generate_pdf_report(state: Dict[str, Any]) -> bytes:
     # ── Innovation Score Panel ──
     score = innovation.get("innovation_score", "N/A")
     grade = innovation.get("grade", "")
-    scores = innovation.get("scores", {})
+    scores = innovation.get("scores") or {}
+    breakdown_map = {d["dimension"]: d for d in (innovation.get("score_breakdown") or [])}
+
+    def _fmt_score(key: str) -> str:
+        """Format a score value: show adjusted value or NULL/N/A with evidence quality."""
+        val = scores.get(key)
+        dim = breakdown_map.get(key, {})
+        status = dim.get("status", "")
+        raw = dim.get("raw_value")
+        eq = dim.get("evidence_quality", "")
+        if val is not None:
+            label = f"{val:.0f}/100"
+            if eq and eq not in ("high", ""):
+                label += f" ({eq})"
+            return label
+        if status == "agent_failed":
+            return "Agent failed"
+        if raw is None:
+            return "N/A"
+        return f"NULL ({status})"
+
     elements.append(Table(
         [[
             Paragraph(f"{score}<font size=12>/100</font>", score_headline),
@@ -128,17 +148,25 @@ def generate_pdf_report(state: Dict[str, Any]) -> bytes:
     elements.append(Spacer(1, 0.1 * inch))
     score_data = [
         ["Metric", "Score"],
-        ["Novelty", str(scores.get("novelty", "N/A"))],
-        ["Market Opportunity (vs saturation)", str(scores.get("market_saturation", "N/A"))],
-        ["Funding Activity", str(scores.get("funding_activity", "N/A"))],
-        ["Research Maturity", str(scores.get("research_maturity", "N/A"))],
-        ["IP White Space (vs patent density)", str(scores.get("patent_density", "N/A"))],
-        ["Low Competition Bonus", str(scores.get("competition_level", "N/A"))],
+        ["Novelty",                             _fmt_score("novelty")],
+        ["Market Opportunity (vs saturation)",  _fmt_score("market_opp")],
+        ["Funding Activity",                    _fmt_score("funding")],
+        ["Research Maturity",                   _fmt_score("research_maturity")],
+        ["IP White Space (vs patent density)",  _fmt_score("ip_space")],
+        ["Low Competition Bonus",               _fmt_score("opportunity_boost")],
     ]
     elements.append(_make_table(score_data, [4.5 * inch, 2 * inch], "#4f46e5"))
     if innovation.get("score_explanation"):
         elements.append(Spacer(1, 0.08 * inch))
         elements.append(_cell(innovation["score_explanation"], body))
+    is_prov = innovation.get("is_provisional", False)
+    coverage = innovation.get("score_coverage", 1.0)
+    if is_prov or coverage < 1.0:
+        elements.append(Spacer(1, 0.04 * inch))
+        prov_note = f"Coverage: {coverage:.0%}"
+        if is_prov:
+            prov_note += " — PROVISIONAL (insufficient data for full assessment)"
+        elements.append(_cell(prov_note, ParagraphStyle("Prov", parent=body, textColor=MUTED, fontSize=8)))
     elements.append(Spacer(1, 0.1 * inch))
 
     # ── Executive Summary ──
@@ -156,27 +184,33 @@ def generate_pdf_report(state: Dict[str, Any]) -> bytes:
         elements.append(_make_table(metric_data, [2.3 * inch, 4.2 * inch], "#7c3aed"))
 
     # ── Competitor Landscape ──
-    comp_list = competitors_data.get("competitors", [])
+    comp_list = competitors_data.get("competitors") or []
     if comp_list:
         elements.append(Paragraph("Competitor Landscape", h2))
-        comp_data = [["Company", "Market Share", "Threat", "Revenue"]]
+        comp_data = [["Company", "Description", "Threat", "Market Share / Revenue"]]
         for c in comp_list[:8]:
+            name = c.get("name") or "—"
+            desc = c.get("description") or "—"
+            threat = c.get("threat_level") or "—"
+            ms = c.get("market_share") or "N/A"
+            rev = c.get("revenue") or "N/A"
+            ms_rev = f"Share: {ms}\nRev: {rev}"
             comp_data.append([
-                _cell(c.get("name", ""), cell_header_label),
-                _cell(c.get("market_share", ""), cell),
-                _cell(c.get("threat_level", ""), cell),
-                _cell(c.get("revenue", ""), cell),
+                _cell(name, cell_header_label),
+                _cell(desc, cell),
+                _cell(threat, cell),
+                _cell(ms_rev, cell),
             ])
-        elements.append(_make_table(comp_data, [2.1 * inch, 1.5 * inch, 1.1 * inch, 1.8 * inch], "#dc2626"))
+        elements.append(_make_table(comp_data, [1.6 * inch, 2.6 * inch, 0.9 * inch, 1.4 * inch], "#dc2626"))
 
     # ── SWOT Analysis ──
-    if swot and any(swot.get(k) for k in ("strengths", "weaknesses", "opportunities", "threats")):
+    if swot and any((swot.get(k) or []) for k in ("strengths", "weaknesses", "opportunities", "threats")):
         elements.append(Paragraph("SWOT Analysis", h2))
         swot_data = [
             [_cell("Strengths", cell_header_label), _cell("Weaknesses", cell_header_label)],
-            [_bullets(swot.get("strengths", []), cell, "+"), _bullets(swot.get("weaknesses", []), cell, "−")],
+            [_bullets(swot.get("strengths") or [], cell, "+"), _bullets(swot.get("weaknesses") or [], cell, "−")],
             [_cell("Opportunities", cell_header_label), _cell("Threats", cell_header_label)],
-            [_bullets(swot.get("opportunities", []), cell, "+"), _bullets(swot.get("threats", []), cell, "!")],
+            [_bullets(swot.get("opportunities") or [], cell, "+"), _bullets(swot.get("threats") or [], cell, "!")],
         ]
         t_swot = Table(swot_data, colWidths=[3.25 * inch, 3.25 * inch])
         t_swot.setStyle(TableStyle([
@@ -255,6 +289,31 @@ def generate_pdf_report(state: Dict[str, Any]) -> bytes:
             elements.append(Paragraph(
                 f"<b>Recommendation:</b> {_esc(validation['recommendation'])}",
                 body,
+            ))
+
+    # ── Sources & References ──
+    source_sections = [
+        ("Market Research",   (state.get("research")       or {}).get("sources") or []),
+        ("Competitors",       (state.get("competitors")     or {}).get("sources") or []),
+        ("Scientific Papers", (state.get("scientific")      or {}).get("sources") or []),
+        ("Patents",           (state.get("patents")         or {}).get("sources") or []),
+        ("Funding",           (state.get("funding")         or {}).get("sources") or []),
+        ("Trends",            (state.get("trends")          or {}).get("sources") or []),
+        ("Market Gaps",       (state.get("research_gaps")   or {}).get("sources") or []),
+    ]
+    all_sources = [(label, url) for label, urls in source_sections for url in urls
+                   if url and not url.startswith("https://mock-research.example.com")]
+    if all_sources:
+        elements.append(Paragraph("Sources &amp; References", h2))
+        seen_urls: set = set()
+        for label, url in all_sources:
+            if url in seen_urls:
+                continue
+            seen_urls.add(url)
+            elements.append(Paragraph(
+                f'<font color="#6b7280">[{_esc(label)}]</font> '
+                f'<a href="{_esc(url)}" color="#4f46e5">{_esc(url)}</a>',
+                ParagraphStyle("SourceLink", parent=body, fontSize=8, leading=11, spaceAfter=2),
             ))
 
     # ── Footer ──

@@ -1,11 +1,11 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, idea_to_query, parse_json_response, truncate_sources
 
 _SYSTEM = (
     PROMPT_INJECTION_GUARD +
@@ -27,13 +27,14 @@ async def run(idea: str, industry: str, healthcare_mode: bool = False) -> Dict[s
     Competitor Agent: searches for competitors in the market and produces a structured
     competitive landscape analysis with threat levels and market share estimates.
     """
+    kw = idea_to_query(idea)
     queries = [
-        f"{idea} {industry} top competitors startups companies",
-        f"best companies {industry} {idea} comparison market share",
-        f"{idea} alternative solutions competitive analysis",
+        f"{kw} {industry} top competitors startups companies",
+        f"best companies {industry} {kw} comparison market share",
+        f"{kw} alternative solutions competitive analysis",
     ]
     if healthcare_mode:
-        queries.append(f"{idea} healthcare competitors hospitals pharma digital health companies")
+        queries.append(f"{kw} healthcare competitors hospitals pharma digital health companies")
 
     raw_results = await asyncio.gather(
         *[search(q, max_results=4) for q in queries[:4]],
@@ -46,13 +47,26 @@ async def run(idea: str, industry: str, healthcare_mode: bool = False) -> Dict[s
 
     sources_text = format_sources_for_prompt(truncate_sources(search_results[:10]))
 
+    # When Tavily returns no results, guide the LLM to use domain knowledge for names/descriptions
+    no_source_note = ""
+    if not search_results:
+        no_source_note = (
+            "\nNOTE: No web sources were retrieved. You MUST still identify 3-5 REAL, NAMED "
+            "companies or research labs that compete in this space based on your domain knowledge. "
+            "Use actual company names (e.g. DeepMind, Insilico Medicine, Recursion Pharmaceuticals). "
+            "Set market_share and revenue to null (unknown without sources) and list them in "
+            "unsupported_claims. All other fields (name, description, strengths, weaknesses, "
+            "threat_level, founded, target_segment) must be filled in.\n"
+        )
+
+    suffix = ANTI_HALLUCINATION_SUFFIX
     prompt = f"""Startup Idea: {idea}
 Industry: {industry}
 Healthcare Mode: {healthcare_mode}
 
 Web Research Data:
 {sources_text}
-
+{no_source_note}
 Return a JSON object with exactly this structure:
 {{
   "competitors": [
@@ -75,14 +89,19 @@ Return a JSON object with exactly this structure:
   "unsupported_claims": ["list of field names not found in sources, or empty array"]
 }}
 Include 3 to 6 competitors. market_saturation_score is 0-100 (100 = fully saturated).
-{suffix}""".format(suffix=ANTI_HALLUCINATION_SUFFIX)
+For threat_level: assign based on how directly each competitor overlaps with the startup's
+core value proposition — use "high" for direct overlaps, "medium" for partial, "low" for tangential.
+{suffix}"""
 
     raw = await call_llm(
         prompt=prompt,
         system_prompt=_SYSTEM_HC if healthcare_mode else _SYSTEM,
         model=FireworksModel.DEEPSEEK_V4_FLASH,
-        max_tokens=2000,
+        max_tokens=4000,
+        temperature=0,  # deterministic — market_saturation_score must be stable
     )
     result = parse_json_response(raw)
     result["sources"] = extract_source_urls(search_results)
     return result
+
+

@@ -29,9 +29,9 @@ async def run(
     Risk Agent: evaluates business, technical, market, and operational risks with
     severity/probability scores and concrete mitigation strategies.
     """
-    threats = (swot_data or {}).get("threats", [])[:3]
-    weaknesses = (swot_data or {}).get("weaknesses", [])[:3]
-    ip_risks = (patent_data or {}).get("freedom_to_operate_risks", [])[:2]
+    threats = ((swot_data or {}).get("threats") or [])[:3]
+    weaknesses = ((swot_data or {}).get("weaknesses") or [])[:3]
+    ip_risks = ((patent_data or {}).get("freedom_to_operate_risks") or [])[:2]
     saturation = (competitor_data or {}).get("market_saturation_score", 50)
 
     healthcare_context = ""

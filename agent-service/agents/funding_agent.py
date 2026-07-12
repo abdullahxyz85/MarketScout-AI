@@ -1,11 +1,11 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, idea_to_query, parse_json_response, truncate_sources
 
 _SYSTEM = (
     PROMPT_INJECTION_GUARD +
@@ -27,14 +27,15 @@ async def run(idea: str, industry: str, healthcare_mode: bool = False) -> Dict[s
     Funding Agent: researches recent funding rounds, investor activity, and capital
     flow trends in the target market to assess funding attractiveness.
     """
+    kw = idea_to_query(idea)
     queries = [
-        f"{idea} {industry} startup funding round 2024 2025 venture capital",
+        f"{kw} {industry} startup funding round 2024 2025 venture capital",
         f"{industry} VC investment funding deals Series A B 2024",
     ]
     if healthcare_mode:
-        queries.append(f"{idea} digital health medtech funding investment 2024")
+        queries.append(f"{kw} digital health medtech funding investment 2024")
     else:
-        queries.append(f"{idea} startup raised funding investors crunchbase 2024")
+        queries.append(f"{kw} startup raised funding investors crunchbase 2024")
 
     raw_results = await asyncio.gather(
         *[search(q, max_results=5) for q in queries[:3]],
@@ -47,12 +48,26 @@ async def run(idea: str, industry: str, healthcare_mode: bool = False) -> Dict[s
 
     sources_text = format_sources_for_prompt(truncate_sources(search_results[:10]))
 
+    suffix = ANTI_HALLUCINATION_SUFFIX
+
+    no_source_note = ""
+    if not search_results:
+        no_source_note = (
+            "\nNOTE: No web sources were retrieved. Use your domain knowledge to: "
+            "(1) identify 2-3 REAL VC firms known to invest in this space as top_investors, "
+            "(2) provide a general funding_trend assessment, "
+            "(3) estimate a funding_activity_score based on general sector knowledge. "
+            "Set recent_funding_rounds to [] and total_market_funding_estimate/average_valuation_range "
+            "to null (no verified data). Mark them in unsupported_claims.\n"
+        )
+
     prompt = f"""Startup Idea: {idea}
 Industry: {industry}
 Healthcare Mode: {healthcare_mode}
 
 Funding Research Data:
 {sources_text}
+{no_source_note}
 
 Return a JSON object with exactly this structure:
 {{
@@ -75,14 +90,17 @@ Return a JSON object with exactly this structure:
   "unsupported_claims": ["list of field names not found in sources, or empty array"]
 }}
 funding_activity_score is 0-100 (100 = very active funding environment).
-{suffix}""".format(suffix=ANTI_HALLUCINATION_SUFFIX)
+{suffix}"""
 
     raw = await call_llm(
         prompt=prompt,
         system_prompt=_SYSTEM_HC if healthcare_mode else _SYSTEM,
         model=FireworksModel.DEEPSEEK_V4_FLASH,
-        max_tokens=1500,
+        max_tokens=4000,
+        temperature=0,  # deterministic — funding_activity_score must be stable
     )
     result = parse_json_response(raw)
     result["sources"] = extract_source_urls(search_results)
     return result
+
+

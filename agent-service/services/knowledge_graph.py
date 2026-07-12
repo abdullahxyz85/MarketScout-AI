@@ -42,7 +42,7 @@ def build_knowledge_graph(state: ResearchState) -> Dict[str, Any]:
         G.add_edge("idea", node_id, relation="competes_with")
 
     scientific_data = state.get("scientific") or {}
-    for i, paper in enumerate(scientific_data.get("relevant_papers", [])[:5]):
+    for i, paper in enumerate((scientific_data.get("relevant_papers") or [])[:5]):
         title = paper.get("title", "")
         if not title:
             continue
@@ -58,7 +58,7 @@ def build_knowledge_graph(state: ResearchState) -> Dict[str, Any]:
         G.add_edge("idea", node_id, relation="supported_by_research")
 
     patent_data = state.get("patents") or {}
-    for i, patent in enumerate(patent_data.get("existing_patents", [])[:5]):
+    for i, patent in enumerate((patent_data.get("existing_patents") or [])[:5]):
         title = patent.get("title", "")
         if not title:
             continue
@@ -74,7 +74,7 @@ def build_knowledge_graph(state: ResearchState) -> Dict[str, Any]:
         G.add_edge("idea", node_id, relation="related_patent")
 
     funding_data = state.get("funding") or {}
-    for i, round_ in enumerate(funding_data.get("recent_funding_rounds", [])[:5]):
+    for i, round_ in enumerate((funding_data.get("recent_funding_rounds") or [])[:5]):
         company = round_.get("company", "")
         if not company:
             continue
@@ -108,7 +108,7 @@ def build_knowledge_graph(state: ResearchState) -> Dict[str, Any]:
         G.add_edge("idea", node_id, relation="affected_by_trend")
 
     gaps_data = state.get("research_gaps") or {}
-    for i, gap in enumerate(gaps_data.get("unexplored_opportunities", [])[:4]):
+    for i, gap in enumerate((gaps_data.get("unexplored_opportunities") or [])[:4]):
         if not gap:
             continue
         node_id = f"gap_{i}"

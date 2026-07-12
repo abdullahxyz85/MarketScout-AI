@@ -35,14 +35,14 @@ async def run(
     Strategy Agent: synthesizes all research outputs into strategic recommendations,
     go-to-market strategy, innovation hypotheses, pricing strategy, and execution roadmap.
     """
-    swot_strengths = (swot_data or {}).get("strengths", [])[:3]
-    swot_opps = (swot_data or {}).get("opportunities", [])[:3]
-    diff_strategies = (opportunity_data or {}).get("differentiation_strategies", [])[:3]
-    target_segments = (opportunity_data or {}).get("target_segments", [])[:2]
+    swot_strengths = ((swot_data or {}).get("strengths") or [])[:3]
+    swot_opps = ((swot_data or {}).get("opportunities") or [])[:3]
+    diff_strategies = ((opportunity_data or {}).get("differentiation_strategies") or [])[:3]
+    target_segments = ((opportunity_data or {}).get("target_segments") or [])[:2]
     validation_rec = (validation_data or {}).get("recommendation", "")
-    emerging_tech = (trend_data or {}).get("emerging_technologies", [])[:3]
-    niches = (gap_data or {}).get("emerging_niches", [])[:2]
-    gaps = (gap_data or {}).get("unexplored_opportunities", [])[:3]
+    emerging_tech = ((trend_data or {}).get("emerging_technologies") or [])[:3]
+    niches = ((gap_data or {}).get("emerging_niches") or [])[:2]
+    gaps = ((gap_data or {}).get("unexplored_opportunities") or [])[:3]
 
     prompt = f"""Startup Idea: {idea}
 Industry: {industry}
@@ -89,8 +89,8 @@ Include 3-4 innovation hypotheses covering different types."""
     raw = await call_llm(
         prompt=prompt,
         system_prompt=_SYSTEM_HC if healthcare_mode else _SYSTEM,
-        model=FireworksModel.DEEPSEEK_V4_PRO,
-        max_tokens=3000,
+        model=FireworksModel.DEEPSEEK_V4_FLASH,
+        max_tokens=5000,
     )
     return parse_json_response(raw)
 
@@ -158,7 +158,7 @@ Analyze the projected impact of this scenario change. Return a JSON object:
             "You are a strategic scenario analyst. Evaluate business scenarios rigorously "
             "and provide evidence-based projections. Respond with valid JSON only."
         ),
-        model=FireworksModel.DEEPSEEK_V4_PRO,
-        max_tokens=2000,
+        model=FireworksModel.DEEPSEEK_V4_FLASH,
+        max_tokens=3000,
     )
     return parse_json_response(raw)

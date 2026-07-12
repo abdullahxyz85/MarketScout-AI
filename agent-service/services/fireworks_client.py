@@ -31,19 +31,22 @@ async def call_llm(
     system_prompt: Optional[str] = None,
     model: FireworksModel = FireworksModel.DEEPSEEK_V4_FLASH,
     max_tokens: int = 2000,
+    temperature: Optional[float] = None,
     api_key: Optional[str] = None,
 ) -> str:
-    """Call the Fireworks AI LLM (AMD Instinct GPU-backed) and return the full response."""
+    """Call the Fireworks AI LLM (AMD Instinct GPU-backed) and return the full response.
+
+    Pass temperature=0 for deterministic scoring agents; omit for creative/narrative agents.
+    """
     client = _get_client(api_key)
     messages = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": prompt})
-    response = await client.chat.completions.create(
-        model=model,
-        messages=messages,
-        max_tokens=max_tokens,
-    )
+    create_kwargs: dict = dict(model=model, messages=messages, max_tokens=max_tokens)
+    if temperature is not None:
+        create_kwargs["temperature"] = temperature
+    response = await client.chat.completions.create(**create_kwargs)
     return response.choices[0].message.content
 
 
