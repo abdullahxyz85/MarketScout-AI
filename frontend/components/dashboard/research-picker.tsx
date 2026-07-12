@@ -35,13 +35,13 @@ export function ResearchPicker({
       <SelectPrimitive.Trigger
         className={cn(
           'flex w-full items-center justify-between gap-2 rounded-lg bg-white/5 border border-white/10 px-4 py-2.5',
-          'text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50',
+          'text-white text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 overflow-hidden',
           className
         )}
       >
         <SelectPrimitive.Value
           placeholder={isEmpty ? 'No research history to choose' : placeholder}
-          className="truncate text-left min-w-0"
+          className="flex-1 min-w-0 truncate text-left block"
         />
         <SelectPrimitive.Icon asChild>
           <ChevronDown
@@ -52,13 +52,18 @@ export function ResearchPicker({
           />
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
-      <SelectContent className="bg-gray-900 border-white/10 text-white">
+      <SelectContent
+        className="bg-gray-900 border-white/10 text-white w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-2rem)]"
+        sideOffset={6}
+        align="start"
+        avoidCollisions
+      >
         {isEmpty ? (
           <div className="px-8 py-3 text-sm text-gray-500">No research history to choose</div>
         ) : (
           history.map((h) => (
             <SelectItem key={h.job_id} value={h.job_id} className="text-sm focus:bg-white/10 focus:text-white">
-              <span className="block truncate max-w-[260px]">
+              <span className="block truncate max-w-full">
                 {(h.idea ?? 'Untitled').slice(0, 40)}
                 {h.industry ? ` · ${h.industry}` : ''}
                 {h.innovation_score != null ? ` · ${h.innovation_score}` : ''}
