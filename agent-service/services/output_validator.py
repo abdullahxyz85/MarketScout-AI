@@ -153,7 +153,7 @@ _SCHEMAS: Dict[str, Dict[str, Any]] = {
         "citations": True,   # risks list
     },
     "innovation_scoring": {
-        "required": ["innovation_score", "grade", "score_explanation"],
+        "required": ["innovation_score", "grade", "score_explanation", "score_breakdown"],
         "scores":   ["innovation_score"],
         "sources":  False,
         "citations": False,
@@ -180,11 +180,12 @@ _SCHEMAS: Dict[str, Dict[str, Any]] = {
     },
     "report": {
         "required": [
-            "executive_summary", "market_score",
-            "opportunity_score", "competition_level",
+            "executive_summary", "competition_level",
             "recommendations", "key_metrics", "full_report",
         ],
-        "scores":   ["market_score", "opportunity_score"],
+        # market_score and opportunity_score are injected canonically by report_agent.py
+        # after the LLM call — do not require them from the LLM JSON output.
+        "scores":   [],
         "sources":  False,
         "citations": True,   # recommendations
     },

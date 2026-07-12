@@ -87,7 +87,7 @@ Return a JSON object with exactly this structure (no extra keys, no markdown):
         prompt=prompt,
         system_prompt=_SYSTEM,
         model=FireworksModel.DEEPSEEK_V4_FLASH,
-        max_tokens=1200,
+        max_tokens=3000,
     )
 
     result = parse_json_response(raw)

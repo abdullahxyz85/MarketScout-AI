@@ -1,11 +1,11 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 from typing import Any, Dict
 
 from services.fireworks_client import FireworksModel, call_llm
 from services.tavily_client import search
-from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, parse_json_response, truncate_sources
+from services.utils import ANTI_HALLUCINATION_SUFFIX, PROMPT_INJECTION_GUARD, extract_source_urls, format_sources_for_prompt, idea_to_query, parse_json_response, truncate_sources
 
 _SYSTEM = (
     PROMPT_INJECTION_GUARD +
@@ -28,9 +28,10 @@ async def run(idea: str, industry: str, healthcare_mode: bool = False) -> Dict[s
     Trend Agent: identifies market trends, emerging technologies, regulatory changes,
     and disruptive forces affecting the target market space.
     """
+    kw = idea_to_query(idea)
     queries = [
         f"{industry} market trends 2024 2025 emerging technology",
-        f"{idea} {industry} industry disruption innovation trends",
+        f"{kw} {industry} industry disruption innovation trends",
         f"{industry} regulatory technology AI automation trends 2025",
     ]
     if healthcare_mode:
@@ -50,6 +51,7 @@ async def run(idea: str, industry: str, healthcare_mode: bool = False) -> Dict[s
 
     sources_text = format_sources_for_prompt(truncate_sources(search_results[:10]))
 
+    suffix = ANTI_HALLUCINATION_SUFFIX
     prompt = f"""Startup Idea: {idea}
 Industry: {industry}
 Healthcare Mode: {healthcare_mode}
@@ -77,14 +79,16 @@ Return a JSON object with exactly this structure:
   "unsupported_claims": ["list of field names not found in sources, or empty array"]
 }}
 Include 4 to 6 trends.
-{suffix}""".format(suffix=ANTI_HALLUCINATION_SUFFIX)
+{suffix}"""
 
     raw = await call_llm(
         prompt=prompt,
         system_prompt=_SYSTEM_HC if healthcare_mode else _SYSTEM,
         model=FireworksModel.DEEPSEEK_V4_FLASH,
-        max_tokens=1500,
+        max_tokens=4000,
     )
     result = parse_json_response(raw)
     result["sources"] = extract_source_urls(search_results)
     return result
+
+

@@ -7,11 +7,15 @@ from typing import Any, Dict, List
 
 def parse_json_response(text: str) -> Dict[str, Any]:
     """Parse a JSON response from an LLM, handling markdown code blocks, extra text,
-    and truncated responses caused by max_tokens limits."""
+    reasoning model think-blocks, and truncated responses caused by max_tokens limits."""
     if not text:
         return {"parse_error": True, "raw_response": ""}
 
     cleaned = text.strip()
+
+    # 0. Strip <think>…</think> / <thinking>…</thinking> blocks emitted by reasoning models
+    #    (DeepSeek V4 Flash, QwQ, etc.) before any other processing.
+    cleaned = re.sub(r"<think(?:ing)?>.*?</think(?:ing)?>", "", cleaned, flags=re.DOTALL | re.IGNORECASE).strip()
 
     # 1. Direct parse
     try:
@@ -27,14 +31,15 @@ def parse_json_response(text: str) -> Dict[str, Any]:
         except json.JSONDecodeError:
             pass
 
-    # 3. Extract largest {…} block
-    match = re.search(r"\{.*\}", cleaned, re.DOTALL)
-    if match:
-        candidate = match.group(0)
+    # 3. Extract the LAST valid {…} block — reasoning models place the JSON at the end
+    #    after potentially producing plain-text reasoning before it.
+    all_matches = list(re.finditer(r"\{", cleaned))
+    for start_match in reversed(all_matches):
+        start = start_match.start()
+        candidate = cleaned[start:]
         try:
             return json.loads(candidate)
         except json.JSONDecodeError:
-            # 4. Try to repair truncated JSON (LLM cut off by max_tokens)
             repaired = _repair_truncated_json(candidate)
             if repaired is not None:
                 return repaired
@@ -120,6 +125,25 @@ def extract_source_urls(results: List[Dict[str, Any]], limit: int = 5) -> List[s
     return [r.get("url", "") for r in results[:limit] if r.get("url")]
 
 
+def idea_to_query(idea: str, max_words: int = 10) -> str:
+    """Extract a concise search query from a potentially long idea description.
+
+    Takes the most informative words from the idea text, stripping filler words,
+    to produce a tight search query that Tavily can use effectively.
+    """
+    # Strip common filler phrases
+    import re as _re
+    cleaned = _re.sub(
+        r'\b(i want to build|i want to create|i want to make|i am building|'
+        r'we want to|we are building|startup idea:|idea:|please|analyze|whether|'
+        r'could become|billion.dollar|an app|a platform|a system|a tool|a service)\b',
+        ' ', idea.lower(), flags=_re.IGNORECASE,
+    )
+    # Keep only words with ≥4 chars (removes noise words too)
+    words = [w for w in _re.findall(r'[a-zA-Z0-9]+', cleaned) if len(w) >= 4]
+    return ' '.join(words[:max_words])
+
+
 # ─── Prompt-injection guard ───────────────────────────────────────────────────
 # Include this in every agent system prompt to defend against indirect injection
 # from retrieved web content.
@@ -138,14 +162,24 @@ SECURITY RULES — mandatory, non-negotiable:
 # Append to the user prompt of every web-search agent to enforce grounded output.
 ANTI_HALLUCINATION_SUFFIX = """
 CRITICAL EVIDENCE RULES — you MUST follow these exactly:
-1. Use ONLY information explicitly found in the numbered sources above.
-2. Do NOT invent company names, funding amounts, market sizes, paper titles, patent numbers, or regulatory facts.
-3. When a field has no supporting evidence in the sources, set its value to null (not a made-up estimate).
-4. For every quantitative claim (market size, growth rate, revenue, funding amount) set "evidence_quality" accordingly:
-   - "high"   → the exact figure appears verbatim in a source
-   - "medium" → the figure was calculated or derived from source data
-   - "low"    → the figure is an inference with weak source support
-   - "insufficient_evidence" → no relevant source mentions it at all
-5. "unsupported_claims" must list the JSON keys whose values you could NOT find in the sources.
-6. Do NOT use general model knowledge that contradicts or supplements what is in the sources.
+1. WELL-KNOWN PUBLIC ENTITIES (established company names, university names, research lab names,
+   public institution names): you MAY use your training knowledge — these are public facts.
+   Mark them as estimated in unsupported_claims only if you are not confident they exist.
+2. SPECIFIC FINANCIAL / SCIENTIFIC DATA (exact market share %, exact revenue figures,
+   specific funding amounts, exact paper titles/DOIs, specific patent numbers, exact dates,
+   specific regulatory approvals): use ONLY values explicitly stated in the sources above.
+   If not found in sources, set to null and add to unsupported_claims.
+3. ANALYTICAL / SCORING FIELDS (any field ending in _score, _level, _quality, _maturity,
+   research_maturity, academic_consensus, evidence_quality, market_saturation_score,
+   novelty_score, differentiation_thesis, blue_ocean_potential, investor_thesis, etc.):
+   - You MUST provide a value — NEVER return null for these fields.
+   - Reason analytically from found sources plus your domain knowledge.
+   - If sources are sparse, use training knowledge but set evidence_quality to "low".
+4. Set "evidence_quality" for the overall output:
+   - "high"   → key facts appear verbatim in sources
+   - "medium" → figures derived or inferred from source data
+   - "low"    → using domain knowledge, weak source support
+   - "insufficient_evidence" → sources found but topic barely covered
+5. "unsupported_claims" must list only specific financial/scientific field keys whose values
+   you could NOT verify in the sources (e.g. market_share, revenue, exact_funding_amount).
 """

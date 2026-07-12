@@ -55,12 +55,12 @@ async def run(
 
     overall_risk    = (risk_data or {}).get("overall_risk_level", "medium")
     saturation      = (competitor_data or {}).get("market_saturation_score", 50)
-    strategic_recs  = (strategy_data or {}).get("strategic_recommendations", [])[:5]
+    strategic_recs  = ((strategy_data or {}).get("strategic_recommendations") or [])[:5]
     gtm             = (strategy_data or {}).get("go_to_market", "")
     validation_rec  = (validation_data or {}).get("recommendation", "")
     confidence      = (validation_data or {}).get("confidence_level", "medium")
-    trends          = [(t.get("name", "")) for t in (trend_data or {}).get("trends", [])[:3]]
-    funding_trend   = (research_data or {}).get("recent_trends", [])[:3]
+    trends          = [(t.get("name", "")) for t in ((trend_data or {}).get("trends") or [])[:3]]
+    funding_trend   = ((research_data or {}).get("recent_trends") or [])[:3]
 
     competition_level = (
         "high" if saturation >= 70

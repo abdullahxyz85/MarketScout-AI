@@ -68,25 +68,25 @@ async def run(state: Dict[str, Any]) -> Dict[str, Any]:
     market_size      = research.get("market_size_estimate", "Unknown")
     growth_rate      = research.get("growth_rate", "Unknown")
     market_overview  = research.get("market_overview", "")
-    pain_points      = research.get("pain_points", [])[:3]
-    target_customers = research.get("target_customers", [])[:3]
+    pain_points      = (research.get("pain_points") or [])[:3]
+    target_customers = (research.get("target_customers") or [])[:3]
     saturation       = competitors.get("market_saturation_score", 50)
-    differentiation  = competitors.get("differentiation_opportunities", [])[:3]
-    strengths        = swot.get("strengths", [])[:3]
+    differentiation  = (competitors.get("differentiation_opportunities") or [])[:3]
+    strengths        = (swot.get("strengths") or [])[:3]
     opp_score        = opportunities.get("opportunity_score", "N/A")
-    market_gaps      = opportunities.get("market_gaps", [])[:3]
+    market_gaps      = (opportunities.get("market_gaps") or [])[:3]
     risk_level       = risks.get("overall_risk_level", "medium")
-    critical_risks   = risks.get("critical_risks", [])[:3]
+    critical_risks   = (risks.get("critical_risks") or [])[:3]
     gtm              = strategy.get("go_to_market", "")
     pricing          = strategy.get("pricing_strategy", "")
-    partnerships     = strategy.get("key_partnerships", [])[:3]
-    roadmap          = strategy.get("roadmap", [])[:4]
+    partnerships     = (strategy.get("key_partnerships") or [])[:3]
+    roadmap          = (strategy.get("roadmap") or [])[:4]
     recommendation   = validation.get("recommendation", "")
     funding_activity = funding.get("funding_activity_score", 50)
-    top_investors    = funding.get("top_investors", [])[:3]
+    top_investors    = (funding.get("top_investors") or [])[:3]
     avg_valuation    = funding.get("average_valuation_range", "Unknown")
     inno_score       = innovation_score.get("innovation_score", "N/A")
-    market_trends    = trends.get("trends", [])[:3]
+    market_trends    = (trends.get("trends") or [])[:3]
 
     healthcare_context = ""
     if healthcare_mode:

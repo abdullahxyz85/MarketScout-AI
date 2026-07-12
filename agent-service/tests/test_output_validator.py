@@ -128,6 +128,15 @@ def _good(agent: str) -> Dict[str, Any]:
             "innovation_score": 73,
             "grade": "B",
             "score_explanation": "Strong novelty, moderate market.",
+            "score_breakdown": [
+                {"dimension": "novelty", "source_agent": "research_gaps",
+                 "source_field": "novelty_score", "raw_value": 75,
+                 "status": "available", "weight": 0.25,
+                 "adjusted_value": 71.25, "weighted_contribution": 17.81,
+                 "evidence_multiplier": 0.95, "evidence_quality": "medium",
+                 "source_count": 3, "unsupported_claims": 0,
+                 "inverted": False, "warnings": []},
+            ],
         },
         "validation": {
             "challenged_assumptions": [{"assumption": "Users will pay", "challenge": "No proven demand"}],

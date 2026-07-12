@@ -20,12 +20,12 @@ _EQ_PENALTY = {
 # Each entry: (dimension_name, state_key, score_field, weight, invert)
 # invert=True → effective_score = 100 - raw_score  (lower saturation/density = better)
 _DIMENSIONS: List[Tuple[str, str, str, float, bool]] = [
-    ("novelty",           "research_gaps", "novelty_score",           0.25, False),
-    ("market_opp",        "competitors",   "market_saturation_score", 0.20, True),
-    ("funding",           "funding",       "funding_activity_score",  0.15, False),
-    ("research_maturity", "scientific",    "research_maturity_score", 0.15, False),
-    ("ip_space",          "patents",       "patent_density_score",    0.10, True),
-    ("competition_bonus", "competitors",   "market_saturation_score", 0.15, True),
+    ("novelty",            "research_gaps", "novelty_score",           0.25, False),
+    ("market_opp",         "competitors",   "market_saturation_score", 0.20, True),
+    ("funding",            "funding",       "funding_activity_score",  0.15, False),
+    ("research_maturity",  "scientific",    "research_maturity_score", 0.15, False),
+    ("ip_space",           "patents",       "patent_density_score",    0.10, True),
+    ("opportunity_boost",  "opportunities", "opportunity_score",        0.15, False),
 ]
 
 # Total weight used to cross-check the dimension registry
@@ -71,12 +71,12 @@ async def run(state: Dict[str, Any]) -> Dict[str, Any]:
     Innovation Scoring Agent — computes a composite innovation score with full provenance.
 
     Score components (weighted, total = 1.0):
-      novelty           25%  — research_gap_agent.novelty_score
-      market_opp        20%  — inverse of competitor_agent.market_saturation_score
-      funding           15%  — funding_agent.funding_activity_score
-      research_maturity 15%  — scientific_agent.research_maturity_score
-      ip_space          10%  — inverse of patent_agent.patent_density_score
-      competition_bonus 15%  — inverse of competitor_agent.market_saturation_score
+      novelty            25%  — research_gap_agent.novelty_score
+      market_opp         20%  — inverse of competitor_agent.market_saturation_score
+      funding            15%  — funding_agent.funding_activity_score
+      research_maturity  15%  — scientific_agent.research_maturity_score
+      ip_space           10%  — inverse of patent_agent.patent_density_score
+      opportunity_boost  15%  — opportunity_agent.opportunity_score (independent source)
 
     Each raw score is multiplied by an evidence-quality multiplier (0.60–1.00).
 
@@ -91,11 +91,12 @@ async def run(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     # ── Gather agent outputs ──────────────────────────────────────────────────
     agent_outputs: Dict[str, Dict[str, Any]] = {
-        "research_gaps": state.get("research_gaps") or {},
-        "competitors":   state.get("competitors")   or {},
-        "funding":       state.get("funding")       or {},
-        "scientific":    state.get("scientific")    or {},
-        "patents":       state.get("patents")       or {},
+        "research_gaps":  state.get("research_gaps")  or {},
+        "competitors":    state.get("competitors")    or {},
+        "funding":        state.get("funding")        or {},
+        "scientific":     state.get("scientific")     or {},
+        "patents":        state.get("patents")        or {},
+        "opportunities":  state.get("opportunities")  or {},  # for opportunity_boost
     }
 
     # ── Build per-dimension breakdown ─────────────────────────────────────────
@@ -186,10 +187,6 @@ async def run(state: Dict[str, Any]) -> Dict[str, Any]:
         b["raw_value"] for b in breakdown
         if b["status"] == "available"
         and b["raw_value"] is not None
-        and not (
-            # deduplicate: competition_bonus reuses competitors/market_saturation_score
-            b["dimension"] == "competition_bonus"
-        )
     ]
     if len(unique_raw) >= 3 and len(set(unique_raw)) == 1:
         consistency_warnings.append(

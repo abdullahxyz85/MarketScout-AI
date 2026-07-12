@@ -32,11 +32,11 @@ async def run(
     Strengths, Weaknesses, Opportunities, and Threats analysis.
     """
     research_summary = (research_data or {}).get("summary", "")
-    competitors = [(c.get("name", "") + ": " + c.get("description", ""))
-                   for c in (competitor_data or {}).get("competitors", [])[:4]]
-    trends = [(t.get("name", "")) for t in (trend_data or {}).get("trends", [])[:4]]
-    opportunities = (gap_data or {}).get("unexplored_opportunities", [])[:3]
-    blind_spots = (gap_data or {}).get("competitor_blind_spots", [])[:2]
+    competitors = [((c.get("name") or "") + ": " + (c.get("description") or ""))
+                   for c in ((competitor_data or {}).get("competitors") or [])[:4]]
+    trends = [(t.get("name", "")) for t in ((trend_data or {}).get("trends") or [])[:4]]
+    opportunities = ((gap_data or {}).get("unexplored_opportunities") or [])[:3]
+    blind_spots = ((gap_data or {}).get("competitor_blind_spots") or [])[:2]
 
     prompt = f"""Startup Idea: {idea}
 Industry: {industry}
@@ -80,6 +80,6 @@ Be specific and data-driven. Each item should be a full sentence."""
         prompt=prompt,
         system_prompt=_SYSTEM_HC if healthcare_mode else _SYSTEM,
         model=FireworksModel.DEEPSEEK_V4_FLASH,
-        max_tokens=1200,
+        max_tokens=3000,
     )
     return parse_json_response(raw)

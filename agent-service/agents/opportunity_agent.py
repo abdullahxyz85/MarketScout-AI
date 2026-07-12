@@ -30,11 +30,11 @@ async def run(
     Opportunity Agent: identifies market gaps, addressable customer segments,
     differentiation strategies, and computes an opportunity score.
     """
-    pain_points = (research_data or {}).get("pain_points", [])[:4]
-    competitor_weaknesses = [(c.get("name", "") + " weaknesses: " + str(c.get("weaknesses", [])))
-                             for c in (competitor_data or {}).get("competitors", [])[:3]]
-    gaps = (gap_data or {}).get("unexplored_opportunities", [])[:3]
-    swot_opps = (swot_data or {}).get("opportunities", [])[:3]
+    pain_points = ((research_data or {}).get("pain_points") or [])[:4]
+    competitor_weaknesses = [((c.get("name") or "") + " weaknesses: " + str(c.get("weaknesses") or []))
+                             for c in ((competitor_data or {}).get("competitors") or [])[:3]]
+    gaps = ((gap_data or {}).get("unexplored_opportunities") or [])[:3]
+    swot_opps = ((swot_data or {}).get("opportunities") or [])[:3]
     saturation = (competitor_data or {}).get("market_saturation_score", 50)
 
     prompt = f"""Startup Idea: {idea}
@@ -77,6 +77,6 @@ opportunity_score is 0-100. Include 2-3 target segments."""
         prompt=prompt,
         system_prompt=_SYSTEM_HC if healthcare_mode else _SYSTEM,
         model=FireworksModel.DEEPSEEK_V4_FLASH,
-        max_tokens=1500,
+        max_tokens=4000,
     )
     return parse_json_response(raw)

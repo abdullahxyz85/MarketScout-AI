@@ -7,7 +7,8 @@ import {
   Sparkles, ArrowRight, Zap, BarChart3,
   ShieldAlert, FileText, Lightbulb, Clock,
   Compass, Activity, AlertCircle,
-  Download, RefreshCw,
+  Download, RefreshCw, ExternalLink, ChevronDown, ChevronUp,
+  TrendingUp,
 } from 'lucide-react';
 import { GlassCard, GlassCardContent, GlassCardHeader } from '@/components/ui/glass-card';
 import { AnimatedButton } from '@/components/ui/animated-button';
@@ -349,8 +350,104 @@ export default function ResearchPage() {
             <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
               <ShieldAlert className="w-5 h-5 flex-shrink-0 text-amber-400" />
               <span className="text-sm text-white/60">Overall Risk Level: </span>
-              <span className="text-sm font-semibold capitalize text-amber-400">{result?.risks?.overall_risk_level ?? 'medium'}</span>
+              <span className="text-sm font-semibold capitalize text-amber-400">{result?.risks?.overall_risk_level ?? '—'}</span>
             </div>
+
+            {/* Innovation Score Justification */}
+            {(result?.innovation_score?.score_breakdown ?? []).length > 0 && (
+              <GlassCard>
+                <GlassCardHeader>
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-indigo-400" />
+                    <h3 className="text-base font-semibold text-white">Score Justification</h3>
+                    {result?.innovation_score?.is_provisional && (
+                      <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">PROVISIONAL</span>
+                    )}
+                  </div>
+                </GlassCardHeader>
+                <GlassCardContent>
+                  <div className="space-y-2">
+                    {result.innovation_score!.score_breakdown!.map((dim: any, i: number) => (
+                      <div key={i} className="flex items-center gap-3 py-2 border-b border-white/5 last:border-0">
+                        <div className="w-32 flex-shrink-0">
+                          <span className="text-xs text-white/60 capitalize">{dim.dimension?.replace(/_/g, ' ')}</span>
+                        </div>
+                        <div className="flex-1 flex items-center gap-2">
+                          {dim.status === 'available' ? (
+                            <>
+                              <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500 transition-all"
+                                  style={{ width: `${dim.raw_value ?? 0}%` }}
+                                />
+                              </div>
+                              <span className="text-xs font-mono text-white/70 w-10 text-right">{dim.raw_value}/100</span>
+                              <span className="text-xs text-white/40 w-12">{dim.evidence_quality}</span>
+                            </>
+                          ) : (
+                            <span className="text-xs text-white/30 italic">{dim.status} — not included in score</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {result?.innovation_score?.score_explanation && (
+                    <p className="text-xs text-white/40 mt-3 pt-3 border-t border-white/10">{result.innovation_score.score_explanation}</p>
+                  )}
+                </GlassCardContent>
+              </GlassCard>
+            )}
+
+            {/* Sources & References */}
+            {(() => {
+              const allSources: { agent: string; urls: string[] }[] = [
+                { agent: 'Market Research',    urls: result?.research?.sources ?? [] },
+                { agent: 'Competitors',        urls: result?.competitors?.sources ?? [] },
+                { agent: 'Scientific Papers',  urls: result?.scientific?.sources ?? [] },
+                { agent: 'Patents',            urls: result?.patents?.sources ?? [] },
+                { agent: 'Funding',            urls: result?.funding?.sources ?? [] },
+                { agent: 'Trends',             urls: result?.trends?.sources ?? [] },
+                { agent: 'Market Gaps',        urls: result?.research_gaps?.sources ?? [] },
+              ].filter((s) => s.urls.length > 0);
+              if (allSources.length === 0) return null;
+              return (
+                <GlassCard>
+                  <GlassCardHeader>
+                    <div className="flex items-center gap-2">
+                      <ExternalLink className="w-5 h-5 text-cyan-400" />
+                      <h3 className="text-base font-semibold text-white">Sources &amp; References</h3>
+                      <span className="ml-auto text-xs text-white/40">
+                        {allSources.reduce((s, g) => s + g.urls.length, 0)} sources
+                      </span>
+                    </div>
+                  </GlassCardHeader>
+                  <GlassCardContent>
+                    <div className="space-y-4">
+                      {allSources.map((group) => (
+                        <div key={group.agent}>
+                          <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">{group.agent}</p>
+                          <ul className="space-y-1">
+                            {group.urls.map((url, i) => (
+                              <li key={i}>
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 transition-colors truncate"
+                                >
+                                  <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                                  <span className="truncate">{url}</span>
+                                </a>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  </GlassCardContent>
+                </GlassCard>
+              );
+            })()}
 
             {/* Knowledge Graph */}
             {result?.knowledge_graph?.nodes?.length ? (
