@@ -7,6 +7,22 @@ Built for the **AMD Developer Hackathon: Act II — Unicorn Track**.
 [![CI](https://github.com/your-org/marketscout-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/marketscout-ai/actions/workflows/ci.yml)
 [![Docker Build](https://github.com/your-org/marketscout-ai/actions/workflows/docker.yml/badge.svg)](https://github.com/your-org/marketscout-ai/actions/workflows/docker.yml)
 
+📖 **[Technical Report](#)** — full documentation of how the system works (architecture, agent pipeline, scoring methodology, evaluation).
+
+---
+
+## For Judges — Run It in One Command
+
+No setup, no `.env` editing, no docker-compose. One self-contained image with everything baked in:
+
+```bash
+docker run -p 5000:5000 gam5510/marketscout-allinone:latest
+```
+
+Then open **http://localhost:5000** — the app is ready immediately (demo mode, no login required).
+
+> This all-in-one image bundles the frontend, backend, and agent-service together for convenience. For the real multi-service architecture used in production, see [Architecture](#architecture) and `docker-compose.yml` below.
+
 ---
 
 ## What it does
