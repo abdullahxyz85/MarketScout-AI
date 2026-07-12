@@ -4,7 +4,7 @@
 
 Built for the **AMD Developer Hackathon: Act II — Unicorn Track**.
 
-📖 **[Technical Report](#)** — full documentation of how the system works (architecture, agent pipeline, scoring methodology, evaluation).
+📖 **[Technical Report](https://drive.google.com/file/d/1ftUefJXMdz0EQ1CXO5BvguDeYH4HsDKj/view?usp=sharing)** — full documentation of how the system works (architecture, agent pipeline, scoring methodology, evaluation).
 
 ---
 
