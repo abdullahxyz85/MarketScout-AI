@@ -18,7 +18,7 @@ interface ResearchPickerProps {
 /** Dropdown for picking a completed research job from the user's history. */
 export function ResearchPicker({
   history, loading, onSelect,
-  placeholder = 'Select a completed research run…',
+  placeholder = 'Select a research…',
   className,
 }: ResearchPickerProps) {
   const [open, setOpen] = useState(false);
