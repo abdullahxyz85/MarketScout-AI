@@ -1,0 +1,94 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# MarketScout AI — Single-container "judge" build.
+# Bundles frontend + backend + agent-service + nginx into ONE image so it runs
+# out of the box with a single `docker run`. Not intended for production use
+# (that's docker-compose.prod.yml with separate services) — this is purely a
+# self-contained demo package.
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Stage 1: Frontend build ──────────────────────────────────────────────────
+FROM node:20-alpine AS frontend-builder
+WORKDIR /app
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci
+COPY frontend/ .
+RUN mkdir -p public
+# Demo mode bypasses the OAuth login screen client-side (no OAuth redirect
+# URIs are registered for localhost, so real login wouldn't work here anyway).
+ENV NEXT_PUBLIC_DEMO_MODE=true
+RUN npm run build
+
+# ── Stage 2: Final image — python + node + nginx + supervisor ───────────────
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl gnupg nginx supervisor \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# ── Backend ──
+WORKDIR /app/backend
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir --default-timeout=120 --retries=5 -r requirements.txt
+COPY backend/ .
+
+# ── Agent service ──
+WORKDIR /app/agent-service
+COPY agent-service/requirements.txt .
+RUN pip install --no-cache-dir --default-timeout=120 --retries=10 -r requirements.txt
+COPY agent-service/ .
+RUN mkdir -p logs
+
+# ── Frontend (built artifacts only) ──
+WORKDIR /app/frontend
+COPY --from=frontend-builder /app/.next          ./.next
+COPY --from=frontend-builder /app/public         ./public
+COPY --from=frontend-builder /app/package.json   ./
+COPY --from=frontend-builder /app/node_modules   ./node_modules
+COPY --from=frontend-builder /app/next.config.js ./
+
+# ── nginx + supervisord wiring ──
+COPY deploy/allinone/nginx.conf         /etc/nginx/sites-enabled/default
+RUN rm -f /etc/nginx/sites-enabled/default.bak 2>/dev/null || true
+COPY deploy/allinone/supervisord.conf   /etc/supervisor/conf.d/marketscout.conf
+
+WORKDIR /app
+
+# ── Baked-in environment ──
+# Secrets are passed as build-args (from a local, gitignored env file — never
+# committed) and turned into ENV so the running container needs zero extra
+# flags. See deploy/allinone/README.md for how to build this locally.
+ARG SUPABASE_URL=""
+ARG SUPABASE_SERVICE_KEY=""
+ARG OAUTH_GOOGLE_CLIENT_ID=""
+ARG OAUTH_GOOGLE_CLIENT_SECRET=""
+ARG OAUTH_GITHUB_CLIENT_ID=""
+ARG OAUTH_GITHUB_CLIENT_SECRET=""
+ARG JWT_SECRET=""
+ARG SESSION_SECRET=""
+ARG FIREWORKS_API_KEY=""
+ARG TAVILY_API_KEY=""
+
+ENV ENVIRONMENT=production \
+    DOMAIN=http://localhost:5000 \
+    FRONTEND_DOMAIN=http://localhost:5000 \
+    AGENT_AUTH_ENABLED=false \
+    CORS_ORIGINS=http://localhost:5000 \
+    SUPABASE_URL=${SUPABASE_URL} \
+    SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY} \
+    OAUTH_GOOGLE_CLIENT_ID=${OAUTH_GOOGLE_CLIENT_ID} \
+    OAUTH_GOOGLE_CLIENT_SECRET=${OAUTH_GOOGLE_CLIENT_SECRET} \
+    OAUTH_GITHUB_CLIENT_ID=${OAUTH_GITHUB_CLIENT_ID} \
+    OAUTH_GITHUB_CLIENT_SECRET=${OAUTH_GITHUB_CLIENT_SECRET} \
+    JWT_SECRET=${JWT_SECRET} \
+    SESSION_SECRET=${SESSION_SECRET} \
+    FIREWORKS_API_KEY=${FIREWORKS_API_KEY} \
+    TAVILY_API_KEY=${TAVILY_API_KEY}
+
+EXPOSE 5000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -fsS http://localhost:5000/ > /dev/null || exit 1
+
+CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/marketscout.conf"]
