@@ -49,6 +49,38 @@ export default function DashboardPage() {
   const [recentResearch, setRecentResearch] = useState<HistoryItem[]>([]);
   const [jobId, setJobId] = useState<string | null>(null);
   const [switchingJobId, setSwitchingJobId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function loadDashboardData() {
+    const res = await fetch('/api/users/me', { credentials: 'include' });
+    const data = res.ok ? await res.json() : null;
+    if (data?.display_name) setFirstName(data.display_name.split(' ')[0]);
+    if (data?.id) {
+      const histRes = await fetch(`/api/agents/research/history/${data.id}`, { credentials: 'include' });
+      const hist = histRes.ok ? await histRes.json() : null;
+      if (Array.isArray(hist?.history)) setRecentResearch(hist.history.slice(0, 3));
+    }
+    if (jobId) {
+      const resultRes = await fetch(`/api/agents/research/${jobId}/result`, { credentials: 'include' });
+      if (resultRes.ok) {
+        const result = await resultRes.json();
+        saveLastResearch(jobId, result);
+        setLiveData(result);
+      }
+    }
+  }
+
+  async function handleRefresh() {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await loadDashboardData();
+    } catch {
+      // keep showing whatever was previously loaded
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   async function selectResearch(id: string) {
     if (id === jobId || switchingJobId) return;
@@ -137,7 +169,9 @@ export default function DashboardPage() {
           <p className="text-white/45 text-sm">Here&apos;s your market intelligence overview for today</p>
         </div>
         <div className="flex gap-3">
-          <AnimatedButton variant="secondary" size="sm" onClick={() => window.location.reload()}><RefreshCw className="w-4 h-4" />Refresh</AnimatedButton>
+          <AnimatedButton variant="secondary" size="sm" disabled={refreshing} onClick={handleRefresh}>
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />Refresh
+          </AnimatedButton>
           <AnimatedButton
             size="sm"
             disabled={!jobId}
@@ -260,6 +294,7 @@ export default function DashboardPage() {
                           </Pie>
                           <Tooltip
                             {...tooltipStyle}
+                            labelStyle={{ color: '#fff' }}
                             formatter={(v: number) => [`${v}%`, 'Market Share']}
                           />
                         </PieChart>

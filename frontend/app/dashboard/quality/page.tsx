@@ -346,7 +346,7 @@ export default function QualityPage() {
                       <XAxis dataKey="agent" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
                       <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
                       <Tooltip {...TOOLTIP} formatter={(v: number) => [`${v}%`, 'Score']} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
-                      <Bar dataKey="score" radius={[4, 4, 0, 0]}>
+                      <Bar dataKey="score" radius={[4, 4, 0, 0]} activeBar={{ fillOpacity: 0.7, stroke: 'transparent' }}>
                         {agentScoreData.map((d, i) => (
                           <Cell key={i} fill={d.score >= 80 ? '#10b981' : d.score >= 60 ? '#6366f1' : '#f59e0b'} />
                         ))}

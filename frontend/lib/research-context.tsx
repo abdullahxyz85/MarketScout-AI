@@ -14,9 +14,22 @@ export interface ResearchResult {
     recommendations?: string[];
     key_metrics?: Record<string, string>;
   };
-  innovation_score?: { innovation_score?: number; grade?: string; score_explanation?: string };
+  innovation_score?: {
+    innovation_score?: number;
+    grade?: string;
+    score_explanation?: string;
+    score_breakdown?: any[];
+    is_provisional?: boolean;
+  };
   risks?: { overall_risk_level?: string };
   knowledge_graph?: { nodes: any[]; links: any[] };
+  research?: { sources?: string[]; [key: string]: unknown };
+  competitors?: { sources?: string[]; [key: string]: unknown };
+  scientific?: { sources?: string[]; [key: string]: unknown };
+  patents?: { sources?: string[]; [key: string]: unknown };
+  funding?: { sources?: string[]; [key: string]: unknown };
+  trends?: { sources?: string[]; [key: string]: unknown };
+  research_gaps?: { sources?: string[]; [key: string]: unknown };
   [key: string]: unknown;
 }
 

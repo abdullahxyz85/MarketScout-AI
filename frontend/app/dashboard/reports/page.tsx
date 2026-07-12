@@ -214,7 +214,7 @@ export default function ReportsPage() {
                     <Pie data={scoreDistribution} cx="50%" cy="50%" innerRadius={42} outerRadius={68} paddingAngle={4} dataKey="value" strokeWidth={0}>
                       {scoreDistribution.map((d, i) => <Cell key={i} fill={d.color} opacity={0.85} />)}
                     </Pie>
-                    <Tooltip {...tooltipStyle} />
+                    <Tooltip {...tooltipStyle} labelStyle={{ color: '#fff' }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -257,8 +257,8 @@ export default function ReportsPage() {
                 <XAxis dataKey="name" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip {...tooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
-                <Bar dataKey="reports" name="Reports" fill="url(#bRep2)" radius={[5, 5, 0, 0]} />
-                <Bar dataKey="avgScore" name="Avg Score" fill="url(#bScore2)" radius={[5, 5, 0, 0]} />
+                <Bar dataKey="reports" name="Reports" fill="url(#bRep2)" radius={[5, 5, 0, 0]} activeBar={{ fillOpacity: 0.7, stroke: 'transparent' }} />
+                <Bar dataKey="avgScore" name="Avg Score" fill="url(#bScore2)" radius={[5, 5, 0, 0]} activeBar={{ fillOpacity: 0.7, stroke: 'transparent' }} />
               </BarChart>
             </ResponsiveContainer>
           </div>
